@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { RoleBadge } from '../components/Layout';
-import { NightScene } from '../components/NightScene';
+import { Hero } from '../components/Hero';
 import { api, fmt } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useLoad } from '../lib/hooks';
@@ -20,7 +20,7 @@ export function Home() {
 
   return (
     <>
-      <NightScene>
+      <Hero>
         <p className="eyebrow">도깨비의세계 문파</p>
         <h1 className="title">{g?.name ?? ' '}</h1>
         {g?.motto && <p className="motto">“{g.motto}”</p>}
@@ -47,7 +47,7 @@ export function Home() {
             </Link>
           )}
         </div>
-      </NightScene>
+      </Hero>
 
       <div className="page">
         <div className="stats">

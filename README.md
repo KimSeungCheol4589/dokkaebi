@@ -1,6 +1,6 @@
 # 도깨비 문파 홈페이지
 
-도깨비의세계 문파용 팬 홈페이지입니다. 밤하늘과 도깨비불, 도트 그림으로 꾸민 랜딩 페이지에 아래 기능이 있습니다.
+도깨비의세계 문파용 팬 홈페이지입니다. 달밤의 한옥 마을과 도깨비불을 배경으로 한 실사풍 랜딩 페이지에 아래 기능이 있습니다.
 
 - **문파 소개**: 문파 이름, 레벨과 경험치, 공지, 전투력 순위, 이번 주 성장왕
 - **문파원**: 닉네임, 직책, 전투력, 최근 7일 성장, 기여 포인트 (전투력/성장/포인트 순 정렬)
@@ -53,12 +53,14 @@ npm run dev
 ```
 src/
   pages/        화면 (Home, Members, Warehouse, MyPage, Admin, Login)
-  components/   레이아웃, 밤하늘 장면, 도트 스프라이트
+  components/   레이아웃, 메인 비주얼(Hero)
+  assets/       메인 이미지, 로고
   lib/          types, supabaseBackend(실제 DB), demoBackend(체험 모드), auth
 supabase/schema.sql   테이블, 권한(RLS), 창고 신청/승인 함수
 ```
 
 ## 참고
 
-- 글꼴: [갈무리(Galmuri)](https://github.com/quiple/galmuri) — SIL OFL 1.1
-- 도깨비의세계 공식 사이트가 아닌 팬 홈페이지입니다. 공식 로고·이미지는 쓰지 않았고, 도트 그림은 직접 그린 것입니다.
+- 글꼴: Noto Serif KR, Noto Sans KR (Google Fonts, SIL OFL 1.1)
+- 메인 이미지(`src/assets/hero*.webp`)는 AI(Higgsfield, GPT Image 2.5)로 새로 만든 그림입니다.
+- 도깨비의세계 공식 사이트가 아닌 팬 홈페이지입니다. 공식 로고·이미지는 쓰지 않았습니다.

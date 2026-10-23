@@ -5,7 +5,7 @@ import { useAuth } from '../lib/auth';
 import { resetDemo } from '../lib/demoBackend';
 import { useLoad } from '../lib/hooks';
 import { ROLE_LABEL } from '../lib/types';
-import { SMALL_DOKKAEBI, Sprite } from './Sprite';
+import mark from '../assets/mark.webp';
 
 export function Layout() {
   const { session, me, isOfficer } = useAuth();
@@ -24,7 +24,7 @@ export function Layout() {
       )}
       <header className="topbar">
         <Link to="/" className="brand">
-          <Sprite map={SMALL_DOKKAEBI} scale={3} />
+          <img className="brand-mark" src={mark} alt="" width={34} height={34} />
           <span>{guild.data?.name ?? '문파'}</span>
         </Link>
         <nav className="nav">

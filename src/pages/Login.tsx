@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Sprite, SMALL_DOKKAEBI } from '../components/Sprite';
+import hero from '../assets/hero.webp';
+import { HERO_SRCSET } from '../components/Hero';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { DEMO_ACCOUNTS } from '../lib/demoBackend';
@@ -32,10 +33,11 @@ export function Login() {
   }
 
   return (
-    <div className="page narrow">
+    <div className="login-page">
+      <img className="login-bg" src={hero} srcSet={HERO_SRCSET} sizes="100vw" alt="" />
       <div className="panel login">
         <div className="login-head">
-          <Sprite map={SMALL_DOKKAEBI} scale={5} />
+          <p className="eyebrow">도깨비의세계 문파</p>
           <h1>{mode === 'in' ? '문파 로그인' : '문파 가입 신청'}</h1>
         </div>
 
