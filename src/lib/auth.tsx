@@ -1,0 +1,53 @@
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { api } from './api';
+import type { Member, Session } from './types';
+
+interface AuthState {
+  ready: boolean;
+  session: Session | null;
+  me: Member | null;
+  isMember: boolean;
+  isOfficer: boolean;
+  isMaster: boolean;
+  refreshMe: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthState | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [me, setMe] = useState<Member | null>(null);
+
+  const loadMe = useCallback(async (s: Session | null) => {
+    setSession(s);
+    setMe(s ? await api.getMember(s.userId).catch(() => null) : null);
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    api.getSession().then(loadMe);
+    return api.onAuthChange((s) => {
+      // Supabase 콜백 안에서 바로 쿼리하면 교착될 수 있어 한 박자 미룹니다.
+      setTimeout(() => loadMe(s), 0);
+    });
+  }, [loadMe]);
+
+  const isMember = !!me?.approved;
+  const value: AuthState = {
+    ready,
+    session,
+    me,
+    isMember,
+    isOfficer: isMember && (me!.role === 'master' || me!.role === 'officer'),
+    isMaster: isMember && me!.role === 'master',
+    refreshMe: () => loadMe(session),
+  };
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): AuthState {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('AuthProvider 밖에서 useAuth 를 쓸 수 없습니다');
+  return ctx;
+}
