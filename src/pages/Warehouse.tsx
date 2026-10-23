@@ -37,12 +37,12 @@ function WarehouseInner() {
     <div className="page">
       <div className="page-head">
         <h1>문파창고</h1>
-        <p className="muted">기여·성장으로 쌓은 포인트로 아이템을 신청하세요. 운영진이 승인하면 포인트가 차감되고 게임에서 지급됩니다.</p>
+        <p className="muted">문파 상점에서 사 둔 물품을 기여 점수로 신청하세요. 운영진이 승인하면 점수가 차감되고 게임에서 지급됩니다.</p>
       </div>
 
       <div className="wallet panel">
         <div>
-          <span className="stat-label">보유 포인트</span>
+          <span className="stat-label">보유 기여 점수</span>
           <span className="stat-value">{fmt(me?.points ?? 0)}</span>
         </div>
         <div>
@@ -72,12 +72,12 @@ function WarehouseInner() {
               <h3>{item.name}</h3>
               <p className="muted small">{item.description}</p>
               <div className="item-meta">
-                <span className="cost">🏮 {fmt(item.cost)}P</span>
+                <span className="cost">🏮 {fmt(item.cost)}점</span>
                 <span className="muted small">재고 {fmt(item.stock)}</span>
               </div>
             </div>
             <button className="btn btn-red btn-small" disabled={item.stock === 0 || item.cost > available} onClick={() => setPicked(item)}>
-              {item.stock === 0 ? '품절' : item.cost > available ? '포인트 부족' : '신청'}
+              {item.stock === 0 ? '품절' : item.cost > available ? '점수 부족' : '신청'}
             </button>
           </article>
         ))}
@@ -93,7 +93,7 @@ function WarehouseInner() {
                 <th>신청일</th>
                 <th>아이템</th>
                 <th className="r">수량</th>
-                <th className="r">포인트</th>
+                <th className="r">점수</th>
                 <th>상태</th>
                 <th />
               </tr>
@@ -169,7 +169,7 @@ function RequestDialog({ item, available, onClose, onDone }: { item: Item; avail
           <input className="input" placeholder="예: 무기 강화용" maxLength={100} value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
         <p className="total">
-          필요 포인트 <strong>{fmt(total)}P</strong> <span className="muted">/ 사용 가능 {fmt(available)}P</span>
+          필요 점수 <strong>{fmt(total)}점</strong> <span className="muted">/ 사용 가능 {fmt(available)}점</span>
         </p>
         <div className="row-end">
           <button className="btn" onClick={onClose}>

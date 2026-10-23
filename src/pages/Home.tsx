@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { RoleBadge } from '../components/Layout';
 import { Hero } from '../components/Hero';
+import { ScoreGuide } from '../components/ScoreGuide';
 import { api, fmt } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useLoad } from '../lib/hooks';
@@ -16,7 +17,6 @@ export function Home() {
   const growth = list.reduce((s, m) => s + Math.max(0, m.growth_7d), 0);
   const top = list.slice(0, 5);
   const risers = list.filter((m) => m.growth_7d > 0).sort((a, b) => b.growth_7d - a.growth_7d).slice(0, 3);
-  const expPct = g ? Math.min(100, Math.round((g.exp / g.exp_next) * 100)) : 0;
 
   return (
     <>
@@ -25,12 +25,9 @@ export function Home() {
         <h1 className="title">{g?.name ?? ' '}</h1>
         {g?.motto && <p className="motto">“{g.motto}”</p>}
         <div className="level-box">
-          <span className="level">Lv.{g?.level ?? '-'}</span>
-          <div className="exp" aria-label={`문파 경험치 ${expPct}%`}>
-            <div className="exp-fill" style={{ width: `${expPct}%` }} />
-          </div>
-          <span className="exp-text">
-            {g ? `${fmt(g.exp)} / ${fmt(g.exp_next)}` : ''}
+          <span className="level">문파 Lv.{g?.level ?? '-'}</span>
+          <span className="level-meta">
+            문파원 {list.length}명 · 총 전투력 {fmt(total)}
           </span>
         </div>
         <div className="hero-actions">
@@ -97,10 +94,12 @@ export function Home() {
           </div>
         </section>
 
+        {g && <ScoreGuide guild={g} />}
+
         <section className="features">
           <Feature icon="👹" title="문파원 & 전투력" text="닉네임, 직책, 전투력과 최근 7일 성장을 한눈에 봅니다." to="/members" />
-          <Feature icon="🏮" title="기여 포인트" text="레이드·전장·기부·성장으로 포인트가 쌓입니다." to="/me" />
-          <Feature icon="📦" title="문파창고" text="쌓인 포인트로 창고 아이템을 신청하고, 운영진이 지급합니다." to="/warehouse" />
+          <Feature icon="🏮" title="기여 점수" text="전투력 구간 점수에 요신 토벌령·결계지 방어·미혹의 정원·신기 쟁탈전 참여 점수가 더해집니다." to="/me" />
+          <Feature icon="📦" title="문파창고" text="모은 기여 점수로 창고 아이템을 신청하고, 운영진이 지급합니다." to="/warehouse" />
         </section>
       </div>
     </>

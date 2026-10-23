@@ -123,9 +123,7 @@ main { flex: 1; }
 .motto { margin: 12px 0 0; color: var(--text); font-family: var(--font-title); font-size: 18px; opacity: .9; }
 .level-box { display: flex; align-items: center; gap: 14px; margin-top: 26px; flex-wrap: wrap; }
 .level { font-family: var(--font-title); font-weight: 900; font-size: 22px; color: var(--gold-2); }
-.exp { width: min(300px, 60vw); height: 8px; background: rgba(255, 255, 255, .12); border-radius: 999px; overflow: hidden; }
-.exp-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #3aa8e0, var(--fire)); box-shadow: 0 0 12px var(--fire); transition: width .6s ease; }
-.exp-text { font-size: 13px; color: var(--text-soft); }
+.level-meta { font-size: 14px; color: var(--text-soft); }
 .hero-actions { margin-top: 28px; display: flex; gap: 10px; flex-wrap: wrap; }
 .hero-actions .btn { padding: 11px 24px; }
 
@@ -208,9 +206,28 @@ main { flex: 1; }
 .status-approved { background: rgba(47, 149, 131, .22); color: #7fe0c9; }
 .status-rejected { background: rgba(196, 55, 43, .22); color: #ff9d8e; }
 .kind { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(255, 255, 255, .07); white-space: nowrap; }
-.kind-contribution { background: rgba(233, 184, 96, .16); color: var(--gold-2); }
-.kind-growth { background: rgba(95, 208, 160, .16); color: var(--up); }
+.kind-yosin { background: rgba(233, 184, 96, .16); color: var(--gold-2); }
+.kind-barrier { background: rgba(127, 216, 255, .14); color: var(--fire); }
+.kind-garden { background: rgba(240, 150, 200, .15); color: #f4a9d0; }
+.kind-singi { background: rgba(95, 208, 160, .16); color: var(--up); }
 .kind-warehouse { background: rgba(240, 122, 104, .16); color: var(--down); }
+
+/* ---------- 기여 점수 ---------- */
+.formula { margin: 0 0 16px; padding: 10px 14px; border-radius: 8px; background: rgba(233, 184, 96, .08); border: 1px solid var(--line); }
+.formula strong { color: var(--gold-2); }
+.guide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.guide-title { font-size: 15px; color: #fff6e2; }
+.guide-grid p { margin: 2px 0 8px; }
+.guide-table td { padding: 7px 4px; }
+.score-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 16px; padding: 12px 14px; border-radius: 8px; background: rgba(255, 255, 255, .04); font-size: 14px; color: var(--text-soft); }
+.score-sum strong { color: var(--text); }
+.score-sum .op { color: var(--text-dim); }
+.score-sum .total-score strong { color: var(--gold-2); font-size: 18px; }
+.activity-counts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.activity-count { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); }
+.activity-count strong { font-size: 18px; color: #fff6e2; }
+.activity-tabs { margin-bottom: 12px; }
+.guild-form { display: flex; flex-direction: column; gap: 20px; }
 .badge { font-size: 12px; background: var(--red); color: #fff; padding: 0 8px; border-radius: 999px; }
 
 /* ---------- 탭/입력 ---------- */
@@ -245,7 +262,7 @@ textarea.input { resize: vertical; }
 /* ---------- 창고 ---------- */
 .wallet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .wallet > div, .mini-stats > div { display: flex; flex-direction: column; }
-.mini-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.mini-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .mini-stats .stat-value { font-size: 22px; }
 .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
 .item { display: flex; gap: 14px; align-items: center; transition: border-color .2s; }
@@ -304,7 +321,8 @@ textarea.input { resize: vertical; }
 /* ---------- 모바일 ---------- */
 @media (max-width: 860px) {
   .stats { grid-template-columns: repeat(2, 1fr); }
-  .grid-2, .grid-2.wide-left, .features { grid-template-columns: 1fr; }
+  .grid-2, .grid-2.wide-left, .features, .guide-grid { grid-template-columns: 1fr; }
+  .activity-counts { grid-template-columns: repeat(2, 1fr); }
   .hero { min-height: 560px; align-items: flex-end; }
   .hero-img { object-position: 78% 50%; }
   .hero::before {

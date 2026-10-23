@@ -3,9 +3,9 @@ import { MemberGate, RoleBadge } from '../components/Layout';
 import { api, fmt, fmtDate } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useAction, useLoad } from '../lib/hooks';
-import { KIND_LABEL, ROLE_LABEL, STATUS_LABEL, type Guild, type ItemDraft, type PointKind, type Role } from '../lib/types';
+import { ACTIVITIES, KIND_LABEL, ROLE_LABEL, STATUS_LABEL, type ActivityKey, type Guild, type ItemDraft, type PowerTier, type Role } from '../lib/types';
 
-const TABS = ['신청 처리', '포인트 지급', '문파원 관리', '창고 관리', '문파 정보'] as const;
+const TABS = ['신청 처리', '참여 기록', '문파원 관리', '창고 관리', '문파 정보'] as const;
 type Tab = (typeof TABS)[number];
 
 export function Admin() {
@@ -24,7 +24,7 @@ export function Admin() {
           ))}
         </div>
         {tab === '신청 처리' && <RequestsTab />}
-        {tab === '포인트 지급' && <PointsTab />}
+        {tab === '참여 기록' && <ActivityTab />}
         {tab === '문파원 관리' && <MembersTab />}
         {tab === '창고 관리' && <ItemsTab />}
         {tab === '문파 정보' && <GuildTab />}
@@ -63,7 +63,7 @@ function RequestsTab() {
               <th>신청자</th>
               <th>아이템</th>
               <th className="r">수량</th>
-              <th className="r">포인트</th>
+              <th className="r">점수</th>
               <th className="r">신청자 잔액</th>
               <th>처리</th>
             </tr>
@@ -110,14 +110,26 @@ function RequestsTab() {
   );
 }
 
-function PointsTab() {
+function ActivityTab() {
   const members = useLoad(() => api.listMembers());
   const ledger = useLoad(() => api.listLedger());
+  const guild = useLoad(() => api.getGuild());
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [amount, setAmount] = useState('50');
-  const [kind, setKind] = useState<PointKind>('contribution');
-  const [reason, setReason] = useState('');
+  const [kind, setKind] = useState<ActivityKey | 'adjust'>('yosin');
+  const [amount, setAmount] = useState('');
+  // toISOString 은 UTC 라 한국 새벽에는 하루 전 날짜가 나오므로 현지 날짜로 만듭니다.
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+  const [memo, setMemo] = useState('');
   const { busy, run } = useAction();
+
+  // 활동을 바꾸면 그 활동의 기본 점수로 채움
+  useEffect(() => {
+    if (kind === 'adjust') setAmount('');
+    else if (guild.data) setAmount(String(guild.data.activity_points[kind] ?? 0));
+  }, [kind, guild.data]);
 
   const list = (members.data ?? []).filter((m) => m.approved);
   const nick = new Map(list.map((m) => [m.id, m.nickname]));
@@ -129,13 +141,28 @@ function PointsTab() {
     });
 
   const delta = Number(amount);
-  const valid = selected.size > 0 && Number.isInteger(delta) && delta !== 0 && reason.trim().length > 0;
+  const [, mm, dd] = date.split('-');
+  const reason =
+    kind === 'adjust'
+      ? memo.trim()
+      : `${KIND_LABEL[kind]} ${Number(mm)}/${Number(dd)}${memo.trim() ? ` · ${memo.trim()}` : ''}`;
+  const valid = selected.size > 0 && Number.isInteger(delta) && delta !== 0 && reason.length > 0;
 
   return (
     <div className="grid-2 wide-left">
       <section className="panel">
-        <h2 className="panel-title">포인트 지급 / 차감</h2>
-        <p className="muted small">레이드·전장 참여자처럼 여러 명을 한 번에 선택할 수 있습니다. 음수를 넣으면 차감됩니다.</p>
+        <h2 className="panel-title">활동 참여 기록</h2>
+        <p className="muted small">콘텐츠가 끝나면 참여한 문파원을 골라 한 번에 기록하세요. 전투력 점수는 전투력 구간에 따라 자동으로 계산됩니다.</p>
+        <div className="tabs activity-tabs">
+          {ACTIVITIES.map((a) => (
+            <button key={a.key} type="button" className={kind === a.key ? 'tab active' : 'tab'} onClick={() => setKind(a.key)}>
+              {a.icon} {a.label}
+            </button>
+          ))}
+          <button type="button" className={kind === 'adjust' ? 'tab active' : 'tab'} onClick={() => setKind('adjust')}>
+            ✏️ 점수 조정
+          </button>
+        </div>
         <div className="row">
           <button className="link-btn" onClick={() => setSelected(new Set(list.map((m) => m.id)))}>
             전체 선택
@@ -153,31 +180,36 @@ function PointsTab() {
           ))}
         </div>
         <div className="form-row">
+          {kind !== 'adjust' && (
+            <label className="field">
+              <span>참여 날짜</span>
+              <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </label>
+          )}
           <label className="field">
-            <span>구분</span>
-            <select className="input" value={kind} onChange={(e) => setKind(e.target.value as PointKind)}>
-              <option value="contribution">기여 (레이드·전장·기부)</option>
-              <option value="growth">성장 (전투력 상승 보상)</option>
-              <option value="adjust">조정</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>포인트</span>
+            <span>{kind === 'adjust' ? '점수 (음수면 차감)' : '1인당 점수'}</span>
             <input className="input" type="number" step={1} value={amount} onChange={(e) => setAmount(e.target.value)} />
           </label>
         </div>
         <label className="field">
-          <span>사유</span>
-          <input className="input" placeholder="예: 10/25 문파 레이드 참여" maxLength={60} value={reason} onChange={(e) => setReason(e.target.value)} />
+          <span>{kind === 'adjust' ? '사유 (필수)' : '메모 (선택)'}</span>
+          <input
+            className="input"
+            placeholder={kind === 'adjust' ? '예: 기록 누락 보정' : '예: 2회차, MVP'}
+            maxLength={40}
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+          />
         </label>
+        {reason && <p className="muted small">기록 내용: {reason}</p>}
         <button
           className="btn btn-red"
           disabled={busy || !valid}
           onClick={() =>
-            run(() => api.grantPoints([...selected], delta, kind, reason.trim()), `${selected.size}명에게 ${delta > 0 ? '+' : ''}${delta}P 처리했습니다`).then((ok) => {
+            run(() => api.grantPoints([...selected], delta, kind, reason), `${selected.size}명 기록했습니다 (${delta > 0 ? '+' : ''}${delta}점)`).then((ok) => {
               if (ok) {
                 setSelected(new Set());
-                setReason('');
+                setMemo('');
                 ledger.reload();
                 members.reload();
               }
@@ -185,14 +217,14 @@ function PointsTab() {
           }
         >
           {selected.size}명에게 {Number.isFinite(delta) && delta > 0 ? '+' : ''}
-          {amount || 0}P {delta < 0 ? '차감' : '지급'}
+          {amount || 0}점 기록
         </button>
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">최근 포인트 기록</h2>
+        <h2 className="panel-title">최근 기록</h2>
         <ul className="log">
-          {(ledger.data ?? []).slice(0, 30).map((l) => (
+          {(ledger.data ?? []).slice(0, 40).map((l) => (
             <li key={l.id}>
               <span className="muted small">{fmtDate(l.created_at)}</span>
               <span className={`kind kind-${l.kind}`}>{KIND_LABEL[l.kind]}</span>
@@ -249,7 +281,7 @@ function MembersTab() {
                 <th>닉네임</th>
                 <th>직책</th>
                 <th className="r">전투력</th>
-                <th className="r">포인트</th>
+                <th className="r">점수</th>
                 <th />
               </tr>
             </thead>
@@ -358,7 +390,7 @@ function ItemsTab() {
                   </td>
                   <td>{i.category}</td>
                   <td className={`r num ${i.stock === 0 ? 'down' : ''}`}>{fmt(i.stock)}</td>
-                  <td className="r num">{fmt(i.cost)}P</td>
+                  <td className="r num">{fmt(i.cost)}점</td>
                   <td className="r">
                     <button className="link-btn" onClick={() => setDraft({ ...i })}>
                       수정
@@ -412,7 +444,7 @@ function ItemsTab() {
                 <input className="input" type="number" min={0} value={draft.stock} onChange={(e) => set('stock', Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
               </label>
               <label className="field">
-                <span>가격 (포인트)</span>
+                <span>가격 (기여 점수)</span>
                 <input className="input" type="number" min={0} value={draft.cost} onChange={(e) => set('cost', Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
               </label>
             </div>
@@ -437,6 +469,7 @@ function ItemsTab() {
 }
 
 function GuildTab() {
+  const { isMaster } = useAuth();
   const guild = useLoad(() => api.getGuild());
   const [form, setForm] = useState<Guild | null>(null);
   const { busy, run } = useAction();
@@ -446,15 +479,19 @@ function GuildTab() {
   if (!form) return <p className="muted">불러오는 중…</p>;
   const set = <K extends keyof Guild>(k: K, v: Guild[K]) => setForm({ ...form, [k]: v });
   const num = (v: string) => Math.max(0, Math.floor(Number(v) || 0));
+  const setTier = (i: number, patch: Partial<PowerTier>) =>
+    set('power_tiers', form.power_tiers.map((t, j) => (j === i ? { ...t, ...patch } : t)));
 
   return (
-    <section className="panel">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          run(() => api.updateGuild({ ...form, exp_next: Math.max(1, form.exp_next), level: Math.max(1, form.level) }), '문파 정보를 저장했습니다. 새로고침하면 상단에도 반영됩니다');
-        }}
-      >
+    <form
+      className="guild-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const tiers = [...form.power_tiers].sort((a, b) => b.min - a.min);
+        run(() => api.updateGuild({ ...form, level: Math.max(1, form.level), power_tiers: tiers }), '문파 정보를 저장했습니다. 새로고침하면 상단에도 반영됩니다');
+      }}
+    >
+      <section className="panel">
         <h2 className="panel-title">문파 정보</h2>
         <div className="form-row">
           <label className="field">
@@ -464,16 +501,6 @@ function GuildTab() {
           <label className="field">
             <span>문파 레벨</span>
             <input className="input" type="number" min={1} value={form.level} onChange={(e) => set('level', num(e.target.value))} />
-          </label>
-        </div>
-        <div className="form-row">
-          <label className="field">
-            <span>현재 문파 경험치</span>
-            <input className="input" type="number" min={0} value={form.exp} onChange={(e) => set('exp', num(e.target.value))} />
-          </label>
-          <label className="field">
-            <span>다음 레벨까지 필요 경험치</span>
-            <input className="input" type="number" min={1} value={form.exp_next} onChange={(e) => set('exp_next', num(e.target.value))} />
           </label>
         </div>
         <label className="field">
@@ -487,12 +514,75 @@ function GuildTab() {
         <label className="check">
           <input type="checkbox" checked={form.recruiting} onChange={(e) => set('recruiting', e.target.checked)} /> 문파원 모집 중
         </label>
-        <div className="row-end">
-          <button className="btn btn-red" disabled={busy}>
-            저장
-          </button>
-        </div>
-      </form>
-    </section>
+      </section>
+
+      <div className="grid-2">
+        <section className="panel">
+          <h2 className="panel-title">전투력 점수 구간</h2>
+          <p className="muted small">전투력이 기준 이상인 구간 중 가장 높은 구간의 점수를 받습니다. 바꾸면 모든 문파원의 기여 점수에 바로 반영됩니다.</p>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>전투력 기준 (이상)</th>
+                <th>점수</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {form.power_tiers.map((t, i) => (
+                <tr key={i}>
+                  <td>
+                    <input className="input input-small" type="number" min={0} disabled={!isMaster} value={t.min} onChange={(e) => setTier(i, { min: num(e.target.value) })} />
+                  </td>
+                  <td>
+                    <input className="input input-small" type="number" min={0} disabled={!isMaster} value={t.points} onChange={(e) => setTier(i, { points: num(e.target.value) })} />
+                  </td>
+                  <td className="r">
+                    {isMaster && form.power_tiers.length > 1 && (
+                      <button type="button" className="link-btn danger" onClick={() => set('power_tiers', form.power_tiers.filter((_, j) => j !== i))}>
+                        삭제
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {isMaster ? (
+            <button type="button" className="btn btn-small" onClick={() => set('power_tiers', [...form.power_tiers, { min: 0, points: 0 }])}>
+              + 구간 추가
+            </button>
+          ) : (
+            <p className="muted small">점수 기준은 문주만 바꿀 수 있습니다.</p>
+          )}
+        </section>
+
+        <section className="panel">
+          <h2 className="panel-title">활동 1회 기본 점수</h2>
+          <p className="muted small">참여 기록 화면에서 이 점수가 자동으로 채워집니다. 기록할 때마다 바꿀 수도 있습니다.</p>
+          {ACTIVITIES.map((a) => (
+            <label key={a.key} className="field">
+              <span>
+                {a.icon} {a.label}
+              </span>
+              <input
+                className="input"
+                type="number"
+                min={0}
+                disabled={!isMaster}
+                value={form.activity_points[a.key] ?? 0}
+                onChange={(e) => set('activity_points', { ...form.activity_points, [a.key]: num(e.target.value) })}
+              />
+            </label>
+          ))}
+        </section>
+      </div>
+
+      <div className="row-end">
+        <button className="btn btn-red" disabled={busy}>
+          저장
+        </button>
+      </div>
+    </form>
   );
 }

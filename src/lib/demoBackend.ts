@@ -1,16 +1,21 @@
 // Supabase 연결 전에 화면을 미리 써 볼 수 있는 체험용 백엔드.
 // 데이터는 이 브라우저의 localStorage 에만 저장되며, 권한 규칙은 supabase/schema.sql 과 같게 맞춰 두었습니다.
-import type {
-  Backend,
-  Guild,
-  Item,
-  ItemRequest,
-  LedgerEntry,
-  Member,
-  PointKind,
-  RequestStatus,
-  Role,
-  Session,
+import {
+  DEFAULT_ACTIVITY_POINTS,
+  DEFAULT_POWER_TIERS,
+  KIND_LABEL,
+  powerScore,
+  type ActivityKey,
+  type Backend,
+  type Guild,
+  type Item,
+  type ItemRequest,
+  type LedgerEntry,
+  type Member,
+  type PointKind,
+  type RequestStatus,
+  type Role,
+  type Session,
 } from './types';
 
 interface Profile {
@@ -44,18 +49,24 @@ interface DemoState {
   session: Session | null;
 }
 
-const STORAGE_KEY = 'dokkaebi-guild-demo-v1';
+// 데이터 구조가 바뀌면 버전을 올려 예전 체험 데이터를 새로 시작합니다.
+const STORAGE_KEY = 'dokkaebi-guild-demo-v2';
 const DAY = 86_400_000;
 
 export const DEMO_ACCOUNTS = [
   { email: 'master@demo', label: '문주로 둘러보기', desc: '모든 관리 기능' },
-  { email: 'officer@demo', label: '부문주로 둘러보기', desc: '승인·포인트·창고 관리' },
+  { email: 'officer@demo', label: '부문주로 둘러보기', desc: '승인·참여 기록·창고 관리' },
   { email: 'member@demo', label: '문파원으로 둘러보기', desc: '창고 신청·내 정보' },
   { email: 'pending@demo', label: '가입 대기자로 둘러보기', desc: '승인 전 화면' },
 ];
 
 function ago(days: number): string {
   return new Date(Date.now() - days * DAY).toISOString();
+}
+
+function dateLabel(daysAgo: number): string {
+  const d = new Date(Date.now() - daysAgo * DAY);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 function uid(): string {
@@ -102,24 +113,41 @@ function seed(): DemoState {
   const add = (member_id: string, delta: number, kind: PointKind, reason: string, days: number) =>
     ledger.push({ id: uid(), member_id, delta, kind, reason, created_at: ago(days) });
 
-  people.forEach(([id, , , power, before, approved], i) => {
+  // 최근 2주 활동 참여 기록 (문파원마다 참여 횟수가 조금씩 다르게)
+  const sessions: [ActivityKey, number][] = [
+    ['yosin', 13], ['barrier', 11], ['garden', 9], ['singi', 7],
+    ['yosin', 6], ['barrier', 4], ['garden', 2], ['singi', 1],
+  ];
+  people.forEach(([id, , , , , approved], i) => {
     if (!approved) return;
-    add(id, 120 - i * 5, 'contribution', '문파 레이드 참여', 12);
-    add(id, 80, 'contribution', '문파 전장 참여', 6);
-    if (power - before >= 2000) add(id, 50, 'growth', '주간 성장 우수', 2);
-    if (i % 3 === 0) add(id, 30, 'contribution', '문파 기부', 3);
+    sessions.forEach(([kind, days], s) => {
+      if ((i + s) % 4 === 3) return; // 가끔 빠짐
+      add(id, DEFAULT_ACTIVITY_POINTS[kind], kind, `${KIND_LABEL[kind]} ${dateLabel(days)}`, days);
+    });
   });
-  add('member', -60, 'warehouse', '강화석 꾸러미 x2', 4);
+  add('member', -60, 'warehouse', '용맹의 강타 도술 조각 선택 상자 x1', 4);
 
+  // 문파 상점에서 사서 문파 창고에 넣어 둔 물품 (가격은 기여 점수 기준)
   const items: Item[] = [
-    ['강화석 꾸러미', '강화', '💎', '장비 강화에 쓰는 강화석 10개 묶음', 24, 30],
-    ['상급 회복 물약', '소모품', '🧪', '사냥·전장용 상급 회복 물약 50개', 40, 15],
-    ['도깨비 방망이 (전설)', '장비', '🪄', '레이드 보상으로 모은 전설 무기', 1, 400],
-    ['비전 스킬서', '스킬', '📜', '스킬 레벨을 올리는 비전서', 6, 120],
-    ['영혼석', '강화', '🔮', '장신구 각성 재료', 12, 60],
-    ['탈것 소환권', '기타', '🐎', '한정 탈것 소환권', 2, 250],
-    ['문파 버프 부적', '소모품', '🧧', '1시간 경험치 +20% 부적', 30, 10],
-    ['고급 장신구 상자', '장비', '🎁', '무작위 고급 장신구 1개', 0, 180],
+    ['용맹의 강타 도술 조각 선택 상자', '도술 조각', '🎁', '강타 도술 조각 중 하나를 골라 받는 상자', 4, 60],
+    ['용맹의 연타 도술 조각 선택 상자', '도술 조각', '🎁', '연타 도술 조각 중 하나를 골라 받는 상자', 3, 60],
+    ['용맹의 저격 도술 조각 선택 상자', '도술 조각', '🎁', '저격 도술 조각 중 하나를 골라 받는 상자', 3, 60],
+    ['용맹의 결명 도술 조각 선택 상자', '도술 조각', '🎁', '결명 도술 조각 중 하나를 골라 받는 상자', 2, 60],
+    ['용맹의 강인 도술 조각 선택 상자', '도술 조각', '🎁', '강인 도술 조각 중 하나를 골라 받는 상자', 2, 60],
+    ['용맹의 파멸 도술 조각 선택 상자', '도술 조각', '🎁', '파멸 도술 조각 중 하나를 골라 받는 상자', 2, 60],
+    ['용맹의 현신 도술 조각 선택 상자', '도술 조각', '🎁', '현신 도술 조각 중 하나를 골라 받는 상자', 1, 60],
+    ['용맹의 특별 도술 조각 랜덤 상자', '도술 조각', '🎲', '특별 도술 조각 하나가 무작위로 나오는 상자', 2, 100],
+    ['용맹의 특별 도술 조각 선택 상자', '도술 조각', '✨', '특별 도술 조각 중 하나를 골라 받는 상자', 1, 300],
+    ['영웅 무기 도안 선택 상자', '도안', '📜', '영웅 등급 무기 도안 선택 (문파 Lv.7 상품)', 3, 120],
+    ['산척의 방어구 도안 선택 상자', '도안', '📜', '영웅 등급 방어구 도안 선택 (문파 Lv.7 상품)', 3, 120],
+    ['영웅 장신구 도안 선택 상자', '도안', '📜', '영웅 등급 장신구 도안 선택 (문파 Lv.7 상품)', 2, 120],
+    ['전설 무기 도안 선택 상자', '도안', '🗡️', '전설 등급 무기 도안 선택 (문파 Lv.20 상품)', 0, 400],
+    ['희귀 가호의 정수', '가호', '🔷', '가호 강화 재료 (희귀)', 60, 2],
+    ['영웅 가호의 정수', '가호', '🟣', '가호 강화 재료 (영웅)', 25, 8],
+    ['전설 가호의 정수', '가호', '🟡', '가호 강화 재료 (전설)', 8, 25],
+    ['가호 주머니', '가호', '👝', '가호를 얻을 수 있는 주머니', 12, 15],
+    ['요혼석', '소모품', '💠', '문파 상점 요혼석', 150, 2],
+    ['특급 체력 회복 물약', '소모품', '🧪', '사냥·전장용 특급 체력 회복 물약', 40, 3],
   ].map(([name, category, icon, description, stock, cost]) => ({
     id: uid(),
     name: name as string,
@@ -133,16 +161,16 @@ function seed(): DemoState {
 
   const requests: RawRequest[] = [
     {
-      id: uid(), member_id: 'member', item_id: items[0].id, quantity: 2, total_cost: 60,
-      status: 'approved', note: '무기 강화용', created_at: ago(5), decided_at: ago(4),
+      id: uid(), member_id: 'member', item_id: items[0].id, quantity: 1, total_cost: 60,
+      status: 'approved', note: '강타 세팅용', created_at: ago(5), decided_at: ago(4),
     },
     {
-      id: uid(), member_id: 'member', item_id: items[3].id, quantity: 1, total_cost: 120,
+      id: uid(), member_id: 'member', item_id: items[15].id, quantity: 2, total_cost: 50,
       status: 'pending', note: '', created_at: ago(0.3), decided_at: null,
     },
     {
-      id: uid(), member_id: 'm6', item_id: items[1].id, quantity: 2, total_cost: 30,
-      status: 'pending', note: '전장 준비', created_at: ago(0.1), decided_at: null,
+      id: uid(), member_id: 'm6', item_id: items[9].id, quantity: 1, total_cost: 120,
+      status: 'pending', note: '무기 교체', created_at: ago(0.1), decided_at: null,
     },
   ];
 
@@ -150,12 +178,12 @@ function seed(): DemoState {
     guild: {
       name: '우리 문파',
       level: 7,
-      exp: 6_420,
-      exp_next: 10_000,
       motto: '함께 사냥하고, 함께 강해진다',
       notice:
-        '이번 주 토요일 밤 9시 문파 레이드가 있습니다. 참여하면 기여 포인트 80점!\n전투력이 오르면 내 정보에서 꼭 갱신해 주세요.',
+        '이번 주 토요일 밤 9시 신기 쟁탈전에 모두 모여 주세요. 참여하면 기여 점수 20점!\n전투력이 오르면 내 정보에서 꼭 갱신해 주세요. 전투력 구간이 오르면 기여 점수도 올라갑니다.',
       recruiting: true,
+      power_tiers: DEFAULT_POWER_TIERS,
+      activity_points: DEFAULT_ACTIVITY_POINTS,
     },
     profiles,
     history,
@@ -193,8 +221,13 @@ export function createDemoBackend(): Backend {
   const isMember = () => !!me()?.approved;
   const isOfficer = () => isMember() && (me()!.role === 'master' || me()!.role === 'officer');
   const isMaster = () => isMember() && me()!.role === 'master';
-  const balance = (id: string) =>
-    state.ledger.filter((l) => l.member_id === id).reduce((s, l) => s + l.delta, 0);
+  const ledgerOf = (id: string) => state.ledger.filter((l) => l.member_id === id);
+  const sum = (entries: LedgerEntry[]) => entries.reduce((s, l) => s + l.delta, 0);
+  const scoreOf = (p: Profile) => powerScore(p.combat_power, state.guild.power_tiers);
+  const balance = (id: string) => {
+    const p = state.profiles.find((x) => x.id === id);
+    return p ? scoreOf(p) + sum(ledgerOf(id)) : 0;
+  };
 
   function overview(p: Profile): Member {
     const hist = state.history
@@ -202,9 +235,13 @@ export function createDemoBackend(): Backend {
       .sort((a, b) => a.recorded_at.localeCompare(b.recorded_at));
     const cutoff = new Date(Date.now() - 7 * DAY).toISOString();
     const before = [...hist].reverse().find((h) => h.recorded_at <= cutoff) ?? hist[0];
+    // Supabase 와 같게: 원장(활동·사용)은 문파원에게만 보입니다.
+    const entries = isMember() ? ledgerOf(p.id) : [];
     return {
       ...p,
-      points: isMember() ? balance(p.id) : 0,
+      power_score: scoreOf(p),
+      activity_score: sum(entries.filter((l) => l.kind !== 'warehouse')),
+      points: scoreOf(p) + sum(entries),
       growth_7d: p.combat_power - (before?.combat_power ?? p.combat_power),
     };
   }
@@ -266,6 +303,10 @@ export function createDemoBackend(): Backend {
     async updateGuild(patch) {
       await tick();
       if (!isOfficer()) throw new Error('운영진만 수정할 수 있습니다');
+      const rulesChanged =
+        (patch.power_tiers && JSON.stringify(patch.power_tiers) !== JSON.stringify(state.guild.power_tiers)) ||
+        (patch.activity_points && JSON.stringify(patch.activity_points) !== JSON.stringify(state.guild.activity_points));
+      if (rulesChanged && !isMaster()) throw new Error('점수 기준은 문주만 바꿀 수 있습니다');
       state.guild = { ...state.guild, ...patch };
       save();
     },
@@ -371,7 +412,7 @@ export function createDemoBackend(): Backend {
       const pending = state.requests
         .filter((r) => r.member_id === id && r.status === 'pending')
         .reduce((s, r) => s + r.total_cost, 0);
-      if (balance(id) - pending < item.cost * quantity) throw new Error('기여 포인트가 부족합니다');
+      if (balance(id) - pending < item.cost * quantity) throw new Error('기여 점수가 부족합니다');
       state.requests.push({
         id: uid(), member_id: id, item_id: itemId, quantity, total_cost: item.cost * quantity,
         status: 'pending', note, created_at: new Date().toISOString(), decided_at: null,
@@ -386,7 +427,7 @@ export function createDemoBackend(): Backend {
       if (approve) {
         const item = state.items.find((i) => i.id === r.item_id)!;
         if (item.stock < r.quantity) throw new Error('창고 재고가 부족합니다');
-        if (balance(r.member_id) < r.total_cost) throw new Error('신청자의 기여 포인트가 부족합니다');
+        if (balance(r.member_id) < r.total_cost) throw new Error('신청자의 기여 점수가 부족합니다');
         item.stock -= r.quantity;
         if (r.total_cost > 0) {
           state.ledger.push({
