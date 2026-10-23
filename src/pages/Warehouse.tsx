@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ItemIcon } from '../components/ItemIcon';
 import { MemberGate } from '../components/Layout';
 import { api, fmt, fmtDate } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -67,7 +68,7 @@ function WarehouseInner() {
       <div className="items">
         {shown.map((item) => (
           <article key={item.id} className={`item panel${item.stock === 0 ? ' sold-out' : ''}`}>
-            <span className="item-icon">{item.icon}</span>
+            <ItemIcon icon={item.icon} />
             <div className="item-body">
               <h3>{item.name}</h3>
               <p className="muted small">{item.description}</p>
@@ -103,7 +104,7 @@ function WarehouseInner() {
                 <tr key={r.id}>
                   <td className="muted">{fmtDate(r.created_at)}</td>
                   <td>
-                    {r.item_icon} {r.item_name}
+                    <ItemIcon icon={r.item_icon} className="mini-icon" /> {r.item_name}
                     {r.note && <div className="muted small">{r.note}</div>}
                   </td>
                   <td className="r num">{r.quantity}</td>
@@ -158,7 +159,7 @@ function RequestDialog({ item, available, onClose, onDone }: { item: Item; avail
     <div className="modal-back" onClick={onClose}>
       <div className="modal panel" role="dialog" aria-modal="true" aria-label={`${item.name} 신청`} onClick={(e) => e.stopPropagation()}>
         <h2 className="panel-title">
-          {item.icon} {item.name} 신청
+          <ItemIcon icon={item.icon} className="mini-icon" /> {item.name} 신청
         </h2>
         <label className="field">
           <span>수량 (최대 {max})</span>

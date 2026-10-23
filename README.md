@@ -73,4 +73,5 @@ supabase/schema.sql   테이블, 권한(RLS), 창고 신청/승인 함수
 
 - 글꼴: Noto Serif KR, Noto Sans KR (Google Fonts, SIL OFL 1.1)
 - 메인 이미지(`src/assets/hero*.webp`)는 AI(Higgsfield, GPT Image 2.5)로 새로 만든 그림입니다.
-- 도깨비의세계 공식 사이트가 아닌 팬 홈페이지입니다. 공식 로고·이미지는 쓰지 않았습니다.
+- 창고 물품 아이콘(`src/assets/items/`)은 게임 문파 상점 화면에서 잘라낸 것으로, 권리는 원저작자(슈퍼캣·카카오게임즈)에게 있습니다.
+- 도깨비의세계 공식 사이트가 아닌 문파 팬 홈페이지입니다.

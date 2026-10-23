@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ITEM_IMAGES, ITEM_IMAGE_LABEL, ItemIcon } from '../components/ItemIcon';
 import { MemberGate, RoleBadge } from '../components/Layout';
 import { api, fmt, fmtDate } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -74,7 +75,7 @@ function RequestsTab() {
                 <td className="muted">{fmtDate(r.created_at)}</td>
                 <td className="strong">{r.nickname}</td>
                 <td>
-                  {r.item_icon} {r.item_name}
+                  <ItemIcon icon={r.item_icon} className="mini-icon" /> {r.item_name}
                   {r.note && <div className="muted small">{r.note}</div>}
                 </td>
                 <td className="r num">{r.quantity}</td>
@@ -386,7 +387,7 @@ function ItemsTab() {
               {(items.data ?? []).map((i) => (
                 <tr key={i.id} className={i.active ? undefined : 'dim'}>
                   <td className="strong">
-                    {i.icon} {i.name} {!i.active && <span className="muted small">(숨김)</span>}
+                    <ItemIcon icon={i.icon} className="mini-icon" /> {i.name} {!i.active && <span className="muted small">(숨김)</span>}
                   </td>
                   <td>{i.category}</td>
                   <td className={`r num ${i.stock === 0 ? 'down' : ''}`}>{fmt(i.stock)}</td>
@@ -416,14 +417,37 @@ function ItemsTab() {
           >
             <h2 className="panel-title">{draft.id ? '아이템 수정' : '새 아이템'}</h2>
             <div className="form-row">
-              <label className="field narrow-field">
+              <div className="field narrow-field">
                 <span>아이콘</span>
-                <input className="input" maxLength={4} value={draft.icon} onChange={(e) => set('icon', e.target.value)} />
-              </label>
+                <ItemIcon icon={draft.icon} />
+              </div>
               <label className="field">
                 <span>이름</span>
                 <input className="input" required maxLength={40} value={draft.name} onChange={(e) => set('name', e.target.value)} />
               </label>
+            </div>
+            <div className="field">
+              <span>아이콘 고르기</span>
+              <div className="icon-picker">
+                {Object.keys(ITEM_IMAGES).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    title={ITEM_IMAGE_LABEL[key] ?? key}
+                    className={draft.icon === `img:${key}` ? 'icon-option on' : 'icon-option'}
+                    onClick={() => set('icon', `img:${key}`)}
+                  >
+                    <ItemIcon icon={`img:${key}`} className="mini-icon" />
+                  </button>
+                ))}
+                <input
+                  className="input emoji-input"
+                  placeholder="이모지"
+                  maxLength={4}
+                  value={draft.icon.startsWith('img:') ? '' : draft.icon}
+                  onChange={(e) => set('icon', e.target.value)}
+                />
+              </div>
             </div>
             <label className="field">
               <span>분류</span>
