@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { DeckSlots } from '../components/DeckSlots';
-import { DECK_SLOTS, SKILL_BY_NAME, STYLE_BY_NAME, styleCounts } from '../data/skills';
+import { DECK_SLOTS, SKILL_BY_NAME, STYLE_BY_NAME, ULTIMATES, resolveUltimate, styleCounts } from '../data/skills';
 import { api, fmtDate } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useAction, useLoad } from '../lib/hooks';
@@ -38,6 +38,7 @@ export function DeckDetail() {
   const canEdit = me?.id === d.author_id || isOfficer;
   const video = d.video_url ? safeUrl(d.video_url) : null;
   const filled = d.slots.slice(0, DECK_SLOTS).filter((n): n is string => !!n);
+  const ult = resolveUltimate(d.slots, d.ultimate_style);
 
   return (
     <div className="page">
@@ -96,6 +97,13 @@ export function DeckDetail() {
                   <td className="r num">{SKILL_BY_NAME[n] ? `${SKILL_BY_NAME[n].cooldown}초` : '-'}</td>
                 </tr>
               ))}
+              {ult && ULTIMATES[ult] && (
+                <tr className="ult-row">
+                  <td className="strong">{ULTIMATES[ult].name}</td>
+                  <td>{ult} 궁극기</td>
+                  <td className="r num">{ULTIMATES[ult].cooldown}초</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </section>

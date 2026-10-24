@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { DeckSlots, SkillChip } from '../components/DeckSlots';
+import { DeckSlots, SkillChip, UltimateChip } from '../components/DeckSlots';
 import { MemberGate } from '../components/Layout';
-import { DECK_PURPOSES, DECK_SLOTS, SKILLS, STYLES, STYLE_BY_NAME, eligibleUltimates, resolveUltimate } from '../data/skills';
+import { DECK_PURPOSES, DECK_SLOTS, SKILLS, STYLES, STYLE_BY_NAME, ULTIMATES, eligibleUltimates, resolveUltimate } from '../data/skills';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useAction } from '../lib/hooks';
@@ -95,10 +95,7 @@ function Editor() {
           <div className={`slot-btn ult-slot${ult ? ' on' : ''}`}>
             <span className="slot-no">궁극기</span>
             {ult ? (
-              <span className="skill-chip ult-chip" style={{ ['--style' as string]: STYLE_BY_NAME[ult].color }}>
-                <span className="skill-style">궁극기</span>
-                <span className="skill-name">{ult} 궁극기</span>
-              </span>
+              <UltimateChip style={ult} />
             ) : (
               <span className="skill-chip empty">같은 스타일 3개 필요</span>
             )}
@@ -115,7 +112,7 @@ function Editor() {
                 style={ult === s ? { background: STYLE_BY_NAME[s].color, borderColor: STYLE_BY_NAME[s].color } : { borderColor: STYLE_BY_NAME[s].color }}
                 onClick={() => set({ ultimate_style: s })}
               >
-                {s}
+                {s} · {ULTIMATES[s]?.name}
               </button>
             ))}
           </div>

@@ -54,6 +54,17 @@ export const SKILLS: Skill[] = Object.entries(RAW).flatMap(([style, list]) =>
 
 export const SKILL_BY_NAME: Record<string, Skill> = Object.fromEntries(SKILLS.map((s) => [s.name, s]));
 
+/** 스타일별 궁극기 (같은 스타일 도술 3개 이상일 때 궁극기 칸에 들어감) */
+export const ULTIMATES: Record<string, Skill> = Object.fromEntries(
+  (
+    [
+      ['절명', '암습', 30], ['연타', '폭주', 50], ['강타', '천벌', 45], ['척살', '일필휘지', 50],
+      ['저격', '정조준', 40], ['주술', '신내림', 76], ['파멸', '대폭발', 50], ['강인', '방패 낙하', 80],
+      ['기동', '연속 쇄도', 30], ['기만', '회전하는 칼날', 60], ['헌신', '개전의 가호', 90], ['제압', '사슬 묶기', 30],
+    ] as [string, string, number][]
+  ).map(([style, name, cooldown]) => [style, { name, style, cooldown }]),
+);
+
 /** 도술 8칸 + 궁극기 1칸 = 9칸 */
 export const DECK_SLOTS = 8;
 export const ULTIMATE_MIN = 3;
