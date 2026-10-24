@@ -8,6 +8,7 @@ const ERROR_HINTS: [RegExp, string][] = [
   [/Database error saving new user/i, '이미 사용 중인 닉네임일 수 있습니다'],
   [/Password should be at least/i, '비밀번호는 6자 이상이어야 합니다'],
   [/profiles_nickname_key/i, '이미 사용 중인 닉네임입니다'],
+  [/point_ledger_weekly_once/i, '이번 주에 이미 기록된 문파원이 있습니다. 새로고침 후 다시 확인해 주세요'],
 ];
 
 function fail(error: { message: string } | null): void {
@@ -97,8 +98,8 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       fail(error);
       return (data ?? []).map((r) => ({ ...r, id: String(r.id) })) as LedgerEntry[];
     },
-    async grantPoints(memberIds, delta, kind, reason) {
-      const rows = memberIds.map((member_id) => ({ member_id, delta, kind, reason }));
+    async grantPoints(memberIds, delta, kind, reason, activityDate) {
+      const rows = memberIds.map((member_id) => ({ member_id, delta, kind, reason, activity_date: activityDate ?? null }));
       const { error } = await sb.from('point_ledger').insert(rows);
       fail(error);
     },

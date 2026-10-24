@@ -27,7 +27,7 @@ export function ScoreGuide({ guild }: { guild: Guild }) {
         </div>
         <div>
           <h3 className="guide-title">활동 점수</h3>
-          <p className="muted small">문파 콘텐츠에 참여할 때마다 운영진이 기록합니다.</p>
+          <p className="muted small">각 콘텐츠는 일주일(수요일 시작)에 한 번이며, 참여하면 운영진이 기록합니다.</p>
           <table className="table guide-table">
             <tbody>
               {ACTIVITIES.map((a) => (
@@ -35,7 +35,7 @@ export function ScoreGuide({ guild }: { guild: Guild }) {
                   <td>
                     {a.icon} {a.label}
                   </td>
-                  <td className="r num strong">+{fmt(guild.activity_points[a.key] ?? 0)}점 / 회</td>
+                  <td className="r num strong">+{fmt(guild.activity_points[a.key] ?? 0)}점 / 주</td>
                 </tr>
               ))}
             </tbody>

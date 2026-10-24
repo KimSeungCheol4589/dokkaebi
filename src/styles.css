@@ -227,6 +227,15 @@ main { flex: 1; }
 .activity-count { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); }
 .activity-count strong { font-size: 18px; color: #fff6e2; }
 .activity-tabs { margin-bottom: 12px; }
+.week-note { margin: 10px 0 0; font-size: 13px; color: var(--text-soft); }
+.week-note strong { color: var(--up); }
+.chip.done { background: rgba(95, 208, 160, .1); border-color: rgba(95, 208, 160, .35); color: var(--up); cursor: default; opacity: .8; }
+.week-nav { display: flex; align-items: center; gap: 8px; }
+.week-label { display: flex; align-items: center; gap: 6px; font-size: 14px; white-space: nowrap; }
+.attendance td, .attendance th { white-space: nowrap; }
+.attendance tfoot td { border-top: 1px solid var(--line-strong); border-bottom: 0; }
+.check-on { color: var(--up); font-weight: 700; }
+.check-off { color: var(--text-dim); }
 .guild-form { display: flex; flex-direction: column; gap: 20px; }
 .badge { font-size: 12px; background: var(--red); color: #fff; padding: 0 8px; border-radius: 999px; }
 

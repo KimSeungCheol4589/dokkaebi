@@ -4,6 +4,7 @@ import { MemberGate, RoleBadge } from '../components/Layout';
 import { api, fmt, fmtDate } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useAction, useLoad } from '../lib/hooks';
+import { today, weekLabel, weekStart } from '../lib/week';
 import { ACTIVITIES, KIND_LABEL, ROLE_LABEL, STATUS_LABEL, type ActivityKey, type Guild, type ItemDraft, type PowerTier, type Role } from '../lib/types';
 
 const TABS = ['신청 처리', '참여 기록', '문파원 관리', '창고 관리', '문파 정보'] as const;
@@ -118,11 +119,7 @@ function ActivityTab() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [kind, setKind] = useState<ActivityKey | 'adjust'>('yosin');
   const [amount, setAmount] = useState('');
-  // toISOString 은 UTC 라 한국 새벽에는 하루 전 날짜가 나오므로 현지 날짜로 만듭니다.
-  const [date, setDate] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  });
+  const [date, setDate] = useState(today);
   const [memo, setMemo] = useState('');
   const { busy, run } = useAction();
 
@@ -141,6 +138,21 @@ function ActivityTab() {
       return n;
     });
 
+  // 각 활동은 주 1회: 고른 날짜가 속한 주(수~화)에 이미 기록된 문파원은 선택할 수 없음
+  const week = weekStart(date);
+  const doneIds = new Set(
+    kind === 'adjust'
+      ? []
+      : (ledger.data ?? [])
+          .filter((l) => l.kind === kind && l.activity_date && weekStart(l.activity_date) === week)
+          .map((l) => l.member_id),
+  );
+  const doneKey = [...doneIds].sort().join();
+  useEffect(() => {
+    setSelected((sel) => new Set([...sel].filter((id) => !doneIds.has(id))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doneKey]);
+
   const delta = Number(amount);
   const [, mm, dd] = date.split('-');
   const reason =
@@ -153,7 +165,7 @@ function ActivityTab() {
     <div className="grid-2 wide-left">
       <section className="panel">
         <h2 className="panel-title">활동 참여 기록</h2>
-        <p className="muted small">콘텐츠가 끝나면 참여한 문파원을 골라 한 번에 기록하세요. 전투력 점수는 전투력 구간에 따라 자동으로 계산됩니다.</p>
+        <p className="muted small">각 콘텐츠는 일주일(수요일 시작)에 한 번입니다. 콘텐츠가 끝나면 참여한 문파원을 골라 한 번에 기록하세요.</p>
         <div className="tabs activity-tabs">
           {ACTIVITIES.map((a) => (
             <button key={a.key} type="button" className={kind === a.key ? 'tab active' : 'tab'} onClick={() => setKind(a.key)}>
@@ -165,7 +177,7 @@ function ActivityTab() {
           </button>
         </div>
         <div className="row">
-          <button className="link-btn" onClick={() => setSelected(new Set(list.map((m) => m.id)))}>
+          <button className="link-btn" onClick={() => setSelected(new Set(list.filter((m) => !doneIds.has(m.id)).map((m) => m.id)))}>
             전체 선택
           </button>
           <button className="link-btn" onClick={() => setSelected(new Set())}>
@@ -173,12 +185,27 @@ function ActivityTab() {
           </button>
           <span className="muted small">{selected.size}명 선택</span>
         </div>
+        {kind !== 'adjust' && (
+          <p className="week-note">
+            {weekLabel(week)} · 기록 완료 <strong>{doneIds.size}명</strong> / 남은 {list.length - doneIds.size}명
+          </p>
+        )}
         <div className="chips">
-          {list.map((m) => (
-            <button key={m.id} className={selected.has(m.id) ? 'chip on' : 'chip'} onClick={() => toggle(m.id)}>
-              {m.nickname}
-            </button>
-          ))}
+          {list.map((m) => {
+            const done = doneIds.has(m.id);
+            return (
+              <button
+                key={m.id}
+                className={done ? 'chip done' : selected.has(m.id) ? 'chip on' : 'chip'}
+                disabled={done}
+                title={done ? '이번 주에 이미 기록됨' : undefined}
+                onClick={() => toggle(m.id)}
+              >
+                {done ? '✓ ' : ''}
+                {m.nickname}
+              </button>
+            );
+          })}
         </div>
         <div className="form-row">
           {kind !== 'adjust' && (
@@ -196,7 +223,7 @@ function ActivityTab() {
           <span>{kind === 'adjust' ? '사유 (필수)' : '메모 (선택)'}</span>
           <input
             className="input"
-            placeholder={kind === 'adjust' ? '예: 기록 누락 보정' : '예: 2회차, MVP'}
+            placeholder={kind === 'adjust' ? '예: 기록 누락 보정' : '예: MVP, 늦참'}
             maxLength={40}
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
@@ -207,7 +234,7 @@ function ActivityTab() {
           className="btn btn-red"
           disabled={busy || !valid}
           onClick={() =>
-            run(() => api.grantPoints([...selected], delta, kind, reason), `${selected.size}명 기록했습니다 (${delta > 0 ? '+' : ''}${delta}점)`).then((ok) => {
+            run(() => api.grantPoints([...selected], delta, kind, reason, kind === 'adjust' ? undefined : date), `${selected.size}명 기록했습니다 (${delta > 0 ? '+' : ''}${delta}점)`).then((ok) => {
               if (ok) {
                 setSelected(new Set());
                 setMemo('');

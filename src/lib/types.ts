@@ -40,6 +40,8 @@ export interface LedgerEntry {
   delta: number;
   kind: PointKind;
   reason: string;
+  /** 활동 참여 날짜 'YYYY-MM-DD' (활동 기록에만 있음) */
+  activity_date: string | null;
   created_at: string;
 }
 
@@ -98,7 +100,8 @@ export interface Backend {
   ): Promise<void>;
 
   listLedger(memberId?: string): Promise<LedgerEntry[]>;
-  grantPoints(memberIds: string[], delta: number, kind: PointKind, reason: string): Promise<void>;
+  /** 활동 기록이면 activityDate 필수. 같은 문파원·활동·주(수~화)에는 한 번만 기록됩니다. */
+  grantPoints(memberIds: string[], delta: number, kind: PointKind, reason: string, activityDate?: string): Promise<void>;
 
   listItems(): Promise<Item[]>;
   saveItem(item: ItemDraft): Promise<void>;

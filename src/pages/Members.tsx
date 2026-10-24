@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { RoleBadge } from '../components/Layout';
 import { ScoreGuide } from '../components/ScoreGuide';
+import { WeeklyAttendance } from '../components/WeeklyAttendance';
 import { api, fmt } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useLoad } from '../lib/hooks';
@@ -19,6 +20,7 @@ export function Members() {
   const { session, isMember, me } = useAuth();
   const members = useLoad(() => api.listMembers(), [session?.userId]);
   const guild = useLoad(() => api.getGuild());
+  const ledger = useLoad(() => (isMember ? api.listLedger() : Promise.resolve([])), [isMember]);
   const [sort, setSort] = useState<SortKey>('combat_power');
   const [query, setQuery] = useState('');
 
@@ -95,6 +97,7 @@ export function Members() {
         {!members.data && !members.error && <p className="muted center pad">불러오는 중…</p>}
       </div>
       {!isMember && <p className="muted small">활동 점수와 기여 점수는 로그인한 문파원에게만 보입니다.</p>}
+      {isMember && members.data && ledger.data && <WeeklyAttendance members={members.data} ledger={ledger.data} />}
       {guild.data && <ScoreGuide guild={guild.data} />}
     </div>
   );

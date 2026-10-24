@@ -6,7 +6,8 @@
 --   * 가장 먼저 가입한 사람이 자동으로 '문주(master)' + 승인 상태가 됩니다.
 --   * 이후 가입자는 운영진(문주·부문주)이 승인해야 문파원이 됩니다.
 --   * 기여 점수 = 전투력 점수(전투력 구간별 자동) + 활동 점수(콘텐츠 참여) - 창고 사용
---   * 활동: 요신 토벌령, 결계지 방어, 미혹의 정원, 신기 쟁탈전 — 운영진이 참여자를 기록합니다.
+--   * 활동: 요신 토벌령, 결계지 방어, 미혹의 정원, 신기 쟁탈전 — 각각 주 1회(수요일 초기화),
+--     운영진이 참여자를 기록합니다.
 --   * 창고 신청은 운영진이 승인할 때 재고와 점수가 차감됩니다.
 -- =====================================================================
 
@@ -56,18 +57,31 @@ create table public.power_history (
 );
 create index power_history_member_idx on public.power_history (member_id, recorded_at);
 
+-- 문파 콘텐츠 주간 시작일 (수요일 초기화): 그 날짜가 속한 주의 수요일
+create or replace function public.week_start(d date) returns date
+language sql immutable as $$
+  select d - ((extract(isodow from d)::int + 4) % 7);
+$$;
+
 -- 점수 원장: 활동 참여(+), 창고 사용(-), 운영진 조정(±)
 --   yosin=요신 토벌령, barrier=결계지 방어, garden=미혹의 정원, singi=신기 쟁탈전
+--   각 활동은 주 1회: 같은 문파원·같은 활동·같은 주(수~화)에는 한 번만 기록됩니다.
 create table public.point_ledger (
-  id          bigint generated always as identity primary key,
-  member_id   uuid not null references public.profiles on delete cascade,
-  delta       int  not null check (delta <> 0),
-  kind        text not null check (kind in ('yosin', 'barrier', 'garden', 'singi', 'warehouse', 'adjust')),
-  reason      text not null default '',
-  created_by  uuid references public.profiles default auth.uid(),
-  created_at  timestamptz not null default now()
+  id             bigint generated always as identity primary key,
+  member_id      uuid not null references public.profiles on delete cascade,
+  delta          int  not null check (delta <> 0),
+  kind           text not null check (kind in ('yosin', 'barrier', 'garden', 'singi', 'warehouse', 'adjust')),
+  reason         text not null default '',
+  activity_date  date,
+  activity_week  date generated always as (week_start(activity_date)) stored,
+  created_by     uuid references public.profiles default auth.uid(),
+  created_at     timestamptz not null default now(),
+  check ((kind in ('yosin', 'barrier', 'garden', 'singi')) = (activity_date is not null))
 );
 create index point_ledger_member_idx on public.point_ledger (member_id);
+create unique index point_ledger_weekly_once
+  on public.point_ledger (member_id, kind, activity_week)
+  where activity_week is not null;
 
 create table public.warehouse_items (
   id           uuid primary key default gen_random_uuid(),

@@ -17,6 +17,7 @@ import {
   type Role,
   type Session,
 } from './types';
+import { addDays, shortDate, today, weekStart } from './week';
 
 interface Profile {
   id: string;
@@ -50,7 +51,7 @@ interface DemoState {
 }
 
 // 데이터 구조가 바뀌면 버전을 올려 예전 체험 데이터를 새로 시작합니다.
-const STORAGE_KEY = 'dokkaebi-guild-demo-v3';
+const STORAGE_KEY = 'dokkaebi-guild-demo-v4';
 const DAY = 86_400_000;
 
 export const DEMO_ACCOUNTS = [
@@ -64,10 +65,6 @@ function ago(days: number): string {
   return new Date(Date.now() - days * DAY).toISOString();
 }
 
-function dateLabel(daysAgo: number): string {
-  const d = new Date(Date.now() - daysAgo * DAY);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
 
 function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -110,19 +107,25 @@ function seed(): DemoState {
   );
 
   const ledger: LedgerEntry[] = [];
-  const add = (member_id: string, delta: number, kind: PointKind, reason: string, days: number) =>
-    ledger.push({ id: uid(), member_id, delta, kind, reason, created_at: ago(days) });
+  const add = (member_id: string, delta: number, kind: PointKind, reason: string, days: number, activity_date: string | null = null) =>
+    ledger.push({ id: uid(), member_id, delta, kind, reason, activity_date, created_at: ago(days) });
 
-  // 최근 2주 활동 참여 기록 (문파원마다 참여 횟수가 조금씩 다르게)
-  const sessions: [ActivityKey, number][] = [
-    ['yosin', 13], ['barrier', 11], ['garden', 9], ['singi', 7],
-    ['yosin', 6], ['barrier', 4], ['garden', 2], ['singi', 1],
-  ];
+  // 지난 2주 + 이번 주 활동 참여 기록. 각 활동은 주 1회 (수요일 시작 기준 요일 오프셋)
+  const DAY_IN_WEEK: Record<ActivityKey, number> = { yosin: 1, barrier: 3, garden: 4, singi: 5 };
+  const thisWeek = weekStart(today());
+  const sessions: [ActivityKey, string][] = [];
+  for (const w of [-14, -7, 0]) {
+    for (const kind of Object.keys(DAY_IN_WEEK) as ActivityKey[]) {
+      const date = addDays(thisWeek, w + DAY_IN_WEEK[kind]);
+      if (date <= today()) sessions.push([kind, date]);
+    }
+  }
+  const daysAgo = (ymd: string) => Math.round((Date.parse(today()) - Date.parse(ymd)) / DAY);
   people.forEach(([id, , , , , approved], i) => {
     if (!approved) return;
-    sessions.forEach(([kind, days], s) => {
+    sessions.forEach(([kind, date], s) => {
       if ((i + s) % 4 === 3) return; // 가끔 빠짐
-      add(id, DEFAULT_ACTIVITY_POINTS[kind], kind, `${KIND_LABEL[kind]} ${dateLabel(days)}`, days);
+      add(id, DEFAULT_ACTIVITY_POINTS[kind], kind, `${KIND_LABEL[kind]} ${shortDate(date)}`, daysAgo(date), date);
     });
   });
   add('member', -60, 'warehouse', '용맹의 강타 도술 조각 선택 상자 x1', 4);
@@ -358,12 +361,23 @@ export function createDemoBackend(): Backend {
         .filter((l) => !memberId || l.member_id === memberId)
         .sort((a, b) => b.created_at.localeCompare(a.created_at));
     },
-    async grantPoints(memberIds, delta, kind, reason) {
+    async grantPoints(memberIds, delta, kind, reason, activityDate) {
       await tick();
       if (!isOfficer()) throw new Error('운영진만 지급할 수 있습니다');
       if (kind === 'warehouse') throw new Error('창고 차감은 신청 승인으로만 처리됩니다');
+      const isActivity = kind !== 'adjust';
+      if (isActivity !== !!activityDate) throw new Error('활동 기록에는 참여 날짜가 필요합니다');
+      if (isActivity) {
+        const week = weekStart(activityDate!);
+        const dup = state.ledger.some(
+          (l) => memberIds.includes(l.member_id) && l.kind === kind && l.activity_date && weekStart(l.activity_date) === week,
+        );
+        if (dup) throw new Error('이번 주에 이미 기록된 문파원이 있습니다. 새로고침 후 다시 확인해 주세요');
+      }
       const now = new Date().toISOString();
-      memberIds.forEach((member_id) => state.ledger.push({ id: uid(), member_id, delta, kind, reason, created_at: now }));
+      memberIds.forEach((member_id) =>
+        state.ledger.push({ id: uid(), member_id, delta, kind, reason, activity_date: isActivity ? activityDate! : null, created_at: now }),
+      );
       save();
     },
 
@@ -432,7 +446,7 @@ export function createDemoBackend(): Backend {
         if (r.total_cost > 0) {
           state.ledger.push({
             id: uid(), member_id: r.member_id, delta: -r.total_cost, kind: 'warehouse',
-            reason: `${item.name} x${r.quantity}`, created_at: new Date().toISOString(),
+            reason: `${item.name} x${r.quantity}`, activity_date: null, created_at: new Date().toISOString(),
           });
         }
       }
