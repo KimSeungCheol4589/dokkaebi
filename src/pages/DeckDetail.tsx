@@ -1,5 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { DeckSlots } from '../components/DeckSlots';
+import { SkillIcon } from '../components/SkillIcon';
 import { DECK_SLOTS, SKILL_BY_NAME, STYLE_BY_NAME, ULTIMATES, resolveUltimate, styleCounts } from '../data/skills';
 import { api, fmtDate } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -92,14 +93,24 @@ export function DeckDetail() {
             <tbody>
               {filled.map((n) => (
                 <tr key={n}>
-                  <td className="strong">{n}</td>
+                  <td className="strong">
+                    <span className="icon-cell">
+                      <SkillIcon name={n} size={28} />
+                      {n}
+                    </span>
+                  </td>
                   <td>{SKILL_BY_NAME[n]?.style ?? '-'}</td>
                   <td className="r num">{SKILL_BY_NAME[n] ? `${SKILL_BY_NAME[n].cooldown}초` : '-'}</td>
                 </tr>
               ))}
               {ult && ULTIMATES[ult] && (
                 <tr className="ult-row">
-                  <td className="strong">{ULTIMATES[ult].name}</td>
+                  <td className="strong">
+                    <span className="icon-cell">
+                      <SkillIcon name={ULTIMATES[ult].name} size={28} />
+                      {ULTIMATES[ult].name}
+                    </span>
+                  </td>
                   <td>{ult} 궁극기</td>
                   <td className="r num">{ULTIMATES[ult].cooldown}초</td>
                 </tr>

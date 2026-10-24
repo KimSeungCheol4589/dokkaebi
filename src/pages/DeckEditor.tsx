@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DeckSlots, SkillChip, UltimateChip } from '../components/DeckSlots';
 import { MemberGate } from '../components/Layout';
+import { SkillIcon, StyleIcon } from '../components/SkillIcon';
 import { DECK_PURPOSES, DECK_SLOTS, SKILLS, STYLES, STYLE_BY_NAME, ULTIMATES, eligibleUltimates, resolveUltimate } from '../data/skills';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -134,6 +135,7 @@ function Editor() {
                 style={style === s.name ? { background: s.color, borderColor: s.color } : { borderColor: s.color }}
                 onClick={() => setStyle(s.name)}
               >
+                <StyleIcon style={s.name} size={14} />
                 {s.name}
               </button>
             ))}
@@ -151,9 +153,12 @@ function Editor() {
                 style={{ ['--style' as string]: STYLE_BY_NAME[s.style].color }}
                 onClick={() => place(s.name)}
               >
-                <span className="skill-name">{s.name}</span>
-                <span className="muted small">
-                  {s.style} · {s.cooldown}초
+                <SkillIcon name={s.name} size={36} />
+                <span className="skill-text">
+                  <span className="skill-name">{s.name}</span>
+                  <span className="muted small">
+                    {s.style} · {s.cooldown}초
+                  </span>
                 </span>
               </button>
             );
