@@ -81,6 +81,9 @@ export function Layout() {
         <p>
           {guild.data?.name ?? '문파'} 팬 홈페이지 · 도깨비의세계 공식 사이트가 아니며, 게임 관련 상표와 권리는 각 권리자에게 있습니다.
         </p>
+        <p>
+          <a href="./privacy.html">개인정보처리방침</a>
+        </p>
       </footer>
     </div>
   );
