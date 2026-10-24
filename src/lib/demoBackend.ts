@@ -51,7 +51,7 @@ interface DemoState {
 }
 
 // 데이터 구조가 바뀌면 버전을 올려 예전 체험 데이터를 새로 시작합니다.
-const STORAGE_KEY = 'dokkaebi-guild-demo-v4';
+const STORAGE_KEY = 'dokkaebi-guild-demo-v5';
 const DAY = 86_400_000;
 
 export const DEMO_ACCOUNTS = [

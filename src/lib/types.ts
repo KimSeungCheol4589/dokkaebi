@@ -145,8 +145,8 @@ export const DEFAULT_POWER_TIERS: PowerTier[] = [
 
 export const DEFAULT_ACTIVITY_POINTS: Record<ActivityKey, number> = {
   yosin: 10,
-  barrier: 15,
-  garden: 10,
+  barrier: 10,
+  garden: 20,
   singi: 20,
 };
 

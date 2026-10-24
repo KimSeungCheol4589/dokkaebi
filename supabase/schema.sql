@@ -34,7 +34,7 @@ create table public.guild (
     {"min": 0, "points": 10}
   ]',
   -- 활동 1회 참여당 기본 점수 (기록할 때 바꿀 수 있음)
-  activity_points jsonb not null default '{"yosin": 10, "barrier": 15, "garden": 10, "singi": 20}',
+  activity_points jsonb not null default '{"yosin": 10, "barrier": 10, "garden": 20, "singi": 20}',
   updated_at  timestamptz not null default now()
 );
 insert into public.guild (id) values (1);
