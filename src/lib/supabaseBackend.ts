@@ -22,7 +22,8 @@ function toSession(s: SbSession | null): Session | null {
 }
 
 export function createSupabaseBackend(url: string, anonKey: string): Backend {
-  const sb = createClient(url, anonKey);
+  // PKCE: 구글 로그인 후 '?code=...' 로 돌아옴. (기본 방식은 '#access_token=...' 이라 HashRouter 주소와 겹침)
+  const sb = createClient(url, anonKey, { auth: { flowType: 'pkce', detectSessionInUrl: true } });
 
   async function uid(): Promise<string> {
     const { data } = await sb.auth.getSession();
@@ -54,6 +55,14 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       fail(error);
       return { needsConfirm: !data.session };
     },
+    async signInWithGoogle() {
+      const { error } = await sb.auth.signInWithOAuth({
+        provider: 'google',
+        // 홈페이지 주소(경로까지, # 앞)로 돌아옴. Supabase 의 Site URL / Redirect URLs 에 들어 있어야 함
+        options: { redirectTo: window.location.origin + window.location.pathname, queryParams: { prompt: 'select_account' } },
+      });
+      fail(error);
+    },
     async signOut() {
       const { error } = await sb.auth.signOut();
       fail(error);
@@ -83,7 +92,9 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       return data as Member | null;
     },
     async updateMyProfile(patch) {
-      const { error } = await sb.from('profiles').update(patch).eq('id', await uid());
+      // 본인이 닉네임을 정하면 '게임 닉네임 확정'으로 표시
+      const row = patch.nickname !== undefined ? { ...patch, nickname_confirmed: true } : patch;
+      const { error } = await sb.from('profiles').update(row).eq('id', await uid());
       fail(error);
     },
     async adminUpdateMember(id, patch) {

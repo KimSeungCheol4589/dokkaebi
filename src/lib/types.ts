@@ -32,6 +32,8 @@ export interface Member {
   /** 지금 쓸 수 있는 기여 점수 = 전투력 점수 + 활동 점수 - 창고 사용 */
   points: number;
   growth_7d: number;
+  /** 본인이 게임 닉네임을 정했는지 (구글 가입 직후에는 false) */
+  nickname_confirmed: boolean;
 }
 
 export interface LedgerEntry {
@@ -120,6 +122,8 @@ export interface Backend {
   onAuthChange(cb: (session: Session | null) => void): () => void;
   signIn(email: string, password: string): Promise<void>;
   signUp(email: string, password: string, nickname: string): Promise<{ needsConfirm: boolean }>;
+  /** 구글 계정으로 로그인(처음이면 가입). 구글 화면으로 이동했다가 돌아옵니다. */
+  signInWithGoogle(): Promise<void>;
   signOut(): Promise<void>;
 
   getGuild(): Promise<Guild>;

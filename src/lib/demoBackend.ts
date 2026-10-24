@@ -296,6 +296,8 @@ export function createDemoBackend(): Backend {
       activity_score: sum(entries.filter((l) => l.kind !== 'warehouse')),
       points: scoreOf(p) + sum(entries),
       growth_7d: p.combat_power - (before?.combat_power ?? p.combat_power),
+      // 체험 계정은 닉네임을 정한 상태로 시작
+      nickname_confirmed: true,
     };
   }
 
@@ -342,6 +344,9 @@ export function createDemoBackend(): Backend {
       save();
       emit();
       return { needsConfirm: false };
+    },
+    async signInWithGoogle() {
+      throw new Error('체험 모드에서는 구글 로그인을 쓸 수 없습니다. 아래 체험 계정 버튼으로 둘러보세요');
     },
     async signOut() {
       state.session = null;

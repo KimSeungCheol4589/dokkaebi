@@ -23,6 +23,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(s);
     setMe(s ? await api.getMember(s.userId).catch(() => null) : null);
     setReady(true);
+    // 구글 로그인에서 돌아온 '?code=...' 를 주소창에서 지움 (# 뒤 화면 주소는 그대로)
+    if (s && new URLSearchParams(window.location.search).has('code')) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+    }
   }, []);
 
   useEffect(() => {

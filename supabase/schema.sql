@@ -45,7 +45,9 @@ create table public.profiles (
   combat_power  bigint not null default 0 check (combat_power >= 0),
   role          text   not null default 'member' check (role in ('master', 'officer', 'member')),
   approved      boolean not null default false,
-  joined_at     timestamptz not null default now()
+  joined_at     timestamptz not null default now(),
+  -- 구글 가입은 게임 닉네임을 모르므로, 본인이 처음 닉네임을 정하면 true
+  nickname_confirmed boolean not null default false
 );
 
 -- 전투력이 바뀔 때마다 기록해서 '성장'(최근 7일 증가량)을 계산합니다.
@@ -153,21 +155,32 @@ $$;
 -- 트리거
 -- ---------------------------------------------------------------------
 
--- 회원가입 시 프로필 생성 (첫 가입자는 문주)
+-- 회원가입(구글 로그인 포함) 시 프로필 생성. 첫 가입자는 문주.
+--   임시 닉네임은 구글 이름 → 이메일 앞부분 순서로 정하고, 겹치면 뒤에 숫자를 붙입니다.
+--   (본인이 첫 로그인 때 게임 닉네임으로 바꿉니다)
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare
   v_first boolean;
+  v_base  text;
+  v_nick  text;
+  v_n     int := 0;
 begin
   perform pg_advisory_xact_lock(4589);
   select not exists (select 1 from profiles) into v_first;
+  v_base := left(coalesce(
+    nullif(trim(new.raw_user_meta_data ->> 'nickname'), ''),
+    nullif(trim(new.raw_user_meta_data ->> 'full_name'), ''),
+    nullif(trim(new.raw_user_meta_data ->> 'name'), ''),
+    nullif(split_part(coalesce(new.email, ''), '@', 1), ''),
+    '문파원'), 16);
+  v_nick := v_base;
+  while exists (select 1 from profiles where nickname = v_nick) loop
+    v_n := v_n + 1;
+    v_nick := v_base || v_n;
+  end loop;
   insert into profiles (id, nickname, role, approved)
-  values (
-    new.id,
-    coalesce(nullif(trim(new.raw_user_meta_data ->> 'nickname'), ''), split_part(new.email, '@', 1)),
-    case when v_first then 'master' else 'member' end,
-    v_first
-  );
+  values (new.id, v_nick, case when v_first then 'master' else 'member' end, v_first);
   return new;
 end $$;
 
@@ -262,7 +275,8 @@ select
     (select h.combat_power from power_history h
       where h.member_id = p.id
       order by h.recorded_at asc limit 1),
-    p.combat_power))::bigint as growth_7d
+    p.combat_power))::bigint as growth_7d,
+  p.nickname_confirmed
 from profiles p;
 
 grant select on public.member_overview to anon, authenticated;

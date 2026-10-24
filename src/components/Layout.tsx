@@ -7,6 +7,7 @@ import { useLoad } from '../lib/hooks';
 import { recordVisit } from '../lib/visits';
 import { ROLE_LABEL } from '../lib/types';
 import mark from '../assets/mark.webp';
+import { NicknameSetup } from './NicknameSetup';
 
 export function Layout() {
   const { session, me, isOfficer } = useAuth();
@@ -70,6 +71,7 @@ export function Layout() {
       <main>
         <Outlet />
       </main>
+      <NicknameSetup />
       <footer className="footer">
         {visits.data && (
           <p className="footer-visits">
