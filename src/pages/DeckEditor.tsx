@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DeckSlots, SkillChip } from '../components/DeckSlots';
 import { MemberGate } from '../components/Layout';
-import { BASE_SLOTS, DECK_PURPOSES, MAX_EXTRA_SLOTS, SKILLS, STYLES, STYLE_BY_NAME, ultimateStyle } from '../data/skills';
+import { DECK_PURPOSES, DECK_SLOTS, SKILLS, STYLES, STYLE_BY_NAME, eligibleUltimates, resolveUltimate } from '../data/skills';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useAction } from '../lib/hooks';
 import type { DeckDraft } from '../lib/types';
 
-const EMPTY: DeckDraft = { title: '', purpose: '사냥', extra_slots: 0, slots: [], description: '', video_url: '' };
+const EMPTY: DeckDraft = { title: '', purpose: '사냥', slots: [], ultimate_style: null, description: '', video_url: '' };
 
 export function DeckEditor() {
   return (
@@ -33,12 +33,11 @@ function Editor() {
     api.getDeck(id).then((d) => {
       if (!d) return navigate('/decks');
       if (d.author_id !== me?.id && !isOfficer) return navigate(`/decks/${id}`);
-      setDraft({ id: d.id, title: d.title, purpose: d.purpose, extra_slots: d.extra_slots, slots: d.slots, description: d.description, video_url: d.video_url });
+      setDraft({ id: d.id, title: d.title, purpose: d.purpose, slots: d.slots, ultimate_style: d.ultimate_style, description: d.description, video_url: d.video_url });
     });
   }, [id, me?.id, isOfficer, navigate]);
 
-  const total = BASE_SLOTS + (draft?.extra_slots ?? 0);
-  const slots = useMemo(() => Array.from({ length: total }, (_, i) => draft?.slots[i] ?? null), [draft, total]);
+  const slots = useMemo(() => Array.from({ length: DECK_SLOTS }, (_, i) => draft?.slots[i] ?? null), [draft]);
   const palette = SKILLS.filter((s) => (!style || s.style === style) && (!query.trim() || s.name.includes(query.trim())));
 
   if (!draft) return <div className="page"><p className="muted">불러오는 중…</p></div>;
@@ -56,42 +55,26 @@ function Editor() {
   }
 
   const filledCount = slots.filter(Boolean).length;
-  const ult = ultimateStyle(slots);
+  const eligible = eligibleUltimates(slots);
+  const ult = resolveUltimate(slots, draft.ultimate_style);
 
   return (
     <div className="page">
       <div className="page-head">
         <h1>{draft.id ? '덱 수정' : '덱 올리기'}</h1>
-        <p className="muted">칸을 누른 뒤 아래에서 도술을 고르세요. 기본 칸에 같은 스타일 도술 3개를 넣으면 그 스타일 궁극기가 열립니다.</p>
+        <p className="muted">칸을 누른 뒤 아래에서 도술을 고르세요. 같은 스타일 도술을 3개 이상 넣으면 그 스타일 궁극기가 궁극기 칸에 들어갑니다.</p>
       </div>
 
       <section className="panel">
         <div className="panel-title-row">
-          <h2 className="panel-title">도술 칸 {ult && <span className="badge-pick">{ult} 궁극기</span>}</h2>
-          <div className="row">
-            <span className="muted small">추가 칸</span>
-            {Array.from({ length: MAX_EXTRA_SLOTS + 1 }, (_, n) => (
-              <button
-                key={n}
-                type="button"
-                className={draft.extra_slots === n ? 'tab active' : 'tab'}
-                onClick={() => {
-                  const next = Array.from({ length: BASE_SLOTS + n }, (_, i) => slots[i] ?? null);
-                  set({ extra_slots: n, slots: next });
-                  // 칸을 늘리면 새로 생긴 빈 칸을 바로 고르도록
-                  const empty = next.indexOf(null);
-                  setActive((a) => (empty >= 0 ? empty : Math.min(a, next.length - 1)));
-                }}
-              >
-                {n}칸
-              </button>
-            ))}
-          </div>
+          <h2 className="panel-title">
+            도술 8칸 + 궁극기 <span className="muted small">{filledCount}/{DECK_SLOTS}</span>
+          </h2>
         </div>
         <div className="slot-editor">
           {slots.map((name, i) => (
-            <button key={i} type="button" className={`slot-btn${active === i ? ' active' : ''}${i >= BASE_SLOTS ? ' extra' : ''}`} onClick={() => setActive(i)}>
-              <span className="slot-no">{i < BASE_SLOTS ? `기본 ${i + 1}` : `추가 ${i - BASE_SLOTS + 1}`}</span>
+            <button key={i} type="button" className={`slot-btn${active === i ? ' active' : ''}`} onClick={() => setActive(i)}>
+              <span className="slot-no">{i + 1}칸</span>
               <SkillChip name={name} />
               {name && (
                 <span
@@ -109,8 +92,34 @@ function Editor() {
               )}
             </button>
           ))}
+          <div className={`slot-btn ult-slot${ult ? ' on' : ''}`}>
+            <span className="slot-no">궁극기</span>
+            {ult ? (
+              <span className="skill-chip ult-chip" style={{ ['--style' as string]: STYLE_BY_NAME[ult].color }}>
+                <span className="skill-style">궁극기</span>
+                <span className="skill-name">{ult} 궁극기</span>
+              </span>
+            ) : (
+              <span className="skill-chip empty">같은 스타일 3개 필요</span>
+            )}
+          </div>
         </div>
-        <p className="muted small">추가 칸은 영기 수련 5-1, 전투 멤버십, 문파 협력 수련 3-1 로 하나씩 열립니다.</p>
+        {eligible.length > 1 && (
+          <div className="row ult-choice">
+            <span className="muted small">궁극기로 쓸 스타일:</span>
+            {eligible.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={ult === s ? 'tab active' : 'tab'}
+                style={ult === s ? { background: STYLE_BY_NAME[s].color, borderColor: STYLE_BY_NAME[s].color } : { borderColor: STYLE_BY_NAME[s].color }}
+                onClick={() => set({ ultimate_style: s })}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="panel">
@@ -159,7 +168,7 @@ function Editor() {
         className="panel"
         onSubmit={(e) => {
           e.preventDefault();
-          run(() => api.saveDeck({ ...draft, title: draft.title.trim(), slots, video_url: draft.video_url.trim() }), '덱을 저장했습니다').then(async (ok) => {
+          run(() => api.saveDeck({ ...draft, title: draft.title.trim(), slots, ultimate_style: ult, video_url: draft.video_url.trim() }), '덱을 저장했습니다').then(async (ok) => {
             if (ok) navigate(draft.id ? `/decks/${draft.id}` : '/decks');
           });
         }}
@@ -200,7 +209,7 @@ function Editor() {
 
       <section className="panel">
         <h2 className="panel-title">미리보기</h2>
-        <DeckSlots slots={slots} extra={draft.extra_slots} />
+        <DeckSlots slots={slots} ultimate={ult} />
       </section>
     </div>
   );

@@ -59,7 +59,7 @@ interface DemoState {
 }
 
 // 데이터 구조가 바뀌면 버전을 올려 예전 체험 데이터를 새로 시작합니다.
-const STORAGE_KEY = 'dokkaebi-guild-demo-v6';
+const STORAGE_KEY = 'dokkaebi-guild-demo-v7';
 const DAY = 86_400_000;
 
 export const DEMO_ACCOUNTS = [
@@ -213,21 +213,25 @@ function seed(): DemoState {
 
 function seedDecks() {
   const deck = (
-    id: string, author_id: string, title: string, purpose: string, slots: (string | null)[], extra_slots: number,
+    id: string, author_id: string, title: string, purpose: string, slots: string[], ultimate_style: string,
     description: string, guild_pick: boolean, days: number,
   ): RawDeck => ({
-    id, author_id, title, purpose, slots, extra_slots, description, video_url: '', guild_pick,
+    id, author_id, title, purpose, slots, ultimate_style, description, video_url: '', guild_pick,
     created_at: ago(days), updated_at: ago(days),
   });
   const decks: RawDeck[] = [
-    deck('d1', 'master', '강타 보스 단일딜', '보스', ['대검 강타', '검기 폭발', '검기 날리기', '연속 충격', '일점 저격', '크게 베기'], 1,
-      '강타 3개로 궁극기를 열고 일점 저격으로 마무리. 요신 토벌령 보스에 문파 기준 덱입니다.\n추가 칸이 있으면 크게 베기를 넣으세요.', true, 6),
-    deck('d2', 'officer', '파멸 광역 사냥', '사냥', ['하늘의 심판', '번개 폭풍', '화염구', '연쇄 번개', '얼음화살'], 0,
+    deck('d1', 'master', '강타 보스 단일딜', '보스',
+      ['대검 강타', '검기 폭발', '검기 날리기', '연속 충격', '크게 베기', '일점 저격', '꿰뚫는 저격', '용맹의 기운'], '강타',
+      '강타 5개로 궁극기를 열고 저격 두 개로 마무리. 요신 토벌령 보스에 문파 기준 덱입니다.\n용맹의 기운은 보스 페이즈 전환 직전에 쓰세요.', true, 6),
+    deck('d2', 'officer', '파멸 광역 사냥', '사냥',
+      ['하늘의 심판', '번개 폭풍', '화염구', '연쇄 번개', '얼음화살', '붕괴하는 대지', '생명의 흐름', '도깨비 불'], '파멸',
       '파멸 궁극기 + 연쇄 번개로 몰이 사냥. 황무지 이후 사냥터에서 무난합니다.', true, 4),
-    deck('d3', 'member', '저격 결계지 방어용', '범용', ['일점 저격', '꿰뚫는 저격', '폭발하는 화살', '쐐기 화살', '생명의 흐름'], 0,
-      '결계지 방어에서 멀리서 웨이브 정리하기 좋아요. 헌신 하나로 생존 보강.', false, 3),
-    deck('d4', 'm6', '절명 대인전', '대인', ['기습', '약점 베기', '환영 참격', '은신', '얼음 감옥', '간파의 눈', '불굴'], 2,
-      '신기 쟁탈전용. 은신 → 기습으로 진입, 얼음 감옥으로 묶고 마무리합니다.', false, 1),
+    deck('d3', 'member', '저격 결계지 방어용', '범용',
+      ['일점 저격', '꿰뚫는 저격', '폭발하는 화살', '쐐기 화살', '집중 사격', '생명의 흐름', '산들 바람', '얼어붙은 대지'], '저격',
+      '결계지 방어에서 멀리서 웨이브 정리하기 좋아요. 헌신 두 개로 생존 보강.', false, 3),
+    deck('d4', 'm6', '절명 대인전', '대인',
+      ['기습', '약점 베기', '환영 참격', '은신', '얼음 감옥', '쇠사슬 가시', '머리치기', '불굴'], '절명',
+      '신기 쟁탈전용. 은신 → 기습으로 진입, 얼음 감옥으로 묶고 마무리합니다.\n제압 3개라 제압 궁극기도 고를 수 있지만 절명이 더 낫습니다.', false, 1),
   ];
   const deckLikes = [
     ...['officer', 'm3', 'member', 'm5', 'm6', 'm8'].map((m) => ({ deck_id: 'd1', member_id: m })),

@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { DeckSlots } from '../components/DeckSlots';
-import { BASE_SLOTS, SKILL_BY_NAME, STYLE_BY_NAME, styleCounts } from '../data/skills';
+import { DECK_SLOTS, SKILL_BY_NAME, STYLE_BY_NAME, styleCounts } from '../data/skills';
 import { api, fmtDate } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useAction, useLoad } from '../lib/hooks';
@@ -37,7 +37,7 @@ export function DeckDetail() {
   const d = deck.data.deck;
   const canEdit = me?.id === d.author_id || isOfficer;
   const video = d.video_url ? safeUrl(d.video_url) : null;
-  const filled = d.slots.slice(0, BASE_SLOTS + d.extra_slots).filter((n): n is string => !!n);
+  const filled = d.slots.slice(0, DECK_SLOTS).filter((n): n is string => !!n);
 
   return (
     <div className="page">
@@ -56,7 +56,7 @@ export function DeckDetail() {
 
       <section className="panel">
         <h2 className="panel-title">도술 칸</h2>
-        <DeckSlots slots={d.slots} extra={d.extra_slots} />
+        <DeckSlots slots={d.slots} ultimate={d.ultimate_style} />
         <div className="style-counts">
           {styleCounts(d.slots).map(([s, n]) => (
             <span key={s} className="style-count" style={{ ['--style' as string]: STYLE_BY_NAME[s]?.color }}>

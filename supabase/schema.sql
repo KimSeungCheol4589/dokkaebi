@@ -414,16 +414,17 @@ revoke execute on function public.cancel_request(uuid) from anon;
 -- 도술덱 · 방명록 · 방문자 수
 -- =====================================================================
 
--- 도술덱: 문파원 누구나 올리고, 운영진이 '문파 추천'으로 표시
+-- 도술덱 (도술 8칸 + 궁극기 1칸): 문파원 누구나 올리고, 운영진이 '문파 추천'으로 표시
 create table public.decks (
   id           uuid primary key default gen_random_uuid(),
   author_id    uuid not null default auth.uid() references public.profiles on delete cascade,
   title        text not null check (char_length(title) between 1 and 40),
   purpose      text not null default '사냥' check (purpose in ('사냥', '보스', '대인', '범용')),
-  extra_slots  int  not null default 0 check (extra_slots between 0 and 3),
-  -- 칸 순서대로 도술 이름 (빈 칸은 null), 최대 8칸
+  -- 칸 순서대로 도술 이름 (빈 칸은 null), 8칸
   slots        jsonb not null default '[]'
                check (jsonb_typeof(slots) = 'array' and jsonb_array_length(slots) <= 8),
+  -- 궁극기 칸: 같은 스타일 도술 3개 이상인 스타일 중 고른 것 (없으면 null)
+  ultimate_style text,
   description  text not null default '' check (char_length(description) <= 2000),
   video_url    text not null default '' check (video_url = '' or video_url ~ '^https?://'),
   guild_pick   boolean not null default false,
@@ -456,8 +457,8 @@ begin
     new.author_id := old.author_id;
     new.created_at := old.created_at;
     -- 추천 표시만 바꾼 경우에는 수정 시각을 그대로 둠
-    if (new.title, new.purpose, new.extra_slots, new.slots, new.description, new.video_url)
-       is distinct from (old.title, old.purpose, old.extra_slots, old.slots, old.description, old.video_url) then
+    if (new.title, new.purpose, new.ultimate_style, new.slots, new.description, new.video_url)
+       is distinct from (old.title, old.purpose, old.ultimate_style, old.slots, old.description, old.video_url) then
       new.updated_at := now();
     end if;
   end if;

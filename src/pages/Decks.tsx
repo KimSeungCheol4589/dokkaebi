@@ -117,7 +117,7 @@ function DeckCard({ deck, onChange }: { deck: Deck; onChange: () => void }) {
             <span className="purpose">{deck.purpose}</span>
           </div>
         </div>
-        <DeckSlots slots={deck.slots} extra={deck.extra_slots} small />
+        <DeckSlots slots={deck.slots} ultimate={deck.ultimate_style} small />
         {deck.description && <p className="deck-desc muted small">{deck.description.split('\n')[0]}</p>}
       </Link>
       <div className="deck-card-foot">

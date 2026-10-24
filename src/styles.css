@@ -278,6 +278,10 @@ main { flex: 1; }
 .slot-btn .slot-no { width: auto; text-align: left; }
 .slot-btn.extra { border-style: dashed; }
 .slot-btn.active { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(233, 184, 96, .3); }
+.slot-btn.ult-slot { cursor: default; border-style: dashed; }
+.slot-btn.ult-slot.on { border-style: solid; border-color: var(--gold); }
+.slot-btn.ult-slot .slot-no { color: var(--gold); font-weight: 700; }
+.ult-choice { margin-top: 4px; }
 .slot-clear { position: absolute; top: 6px; right: 8px; font-size: 12px; color: var(--text-dim); cursor: pointer; }
 .slot-clear:hover { color: var(--down); }
 .palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-top: 14px; max-height: 420px; overflow-y: auto; padding-right: 4px; }

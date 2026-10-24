@@ -54,22 +54,30 @@ export const SKILLS: Skill[] = Object.entries(RAW).flatMap(([style, list]) =>
 
 export const SKILL_BY_NAME: Record<string, Skill> = Object.fromEntries(SKILLS.map((s) => [s.name, s]));
 
-/** 기본 5칸 + 추가 칸(영기 수련·전투 멤버십·문파 협력 수련으로 1칸씩) 최대 3칸 */
-export const BASE_SLOTS = 5;
-export const MAX_EXTRA_SLOTS = 3;
+/** 도술 8칸 + 궁극기 1칸 = 9칸 */
+export const DECK_SLOTS = 8;
+export const ULTIMATE_MIN = 3;
 
 export const DECK_PURPOSES = ['사냥', '보스', '대인', '범용'] as const;
 export type DeckPurpose = (typeof DECK_PURPOSES)[number];
 
-/** 기본 칸에 같은 스타일 도술이 3개 이상이면 그 스타일 궁극기가 열립니다. */
-export function ultimateStyle(slots: (string | null)[]): string | null {
+/** 같은 스타일 도술이 3개 이상인 스타일들 (많은 순). 이 중 하나가 궁극기 칸에 들어갑니다. */
+export function eligibleUltimates(slots: (string | null)[]): string[] {
   const count: Record<string, number> = {};
-  for (const name of slots.slice(0, BASE_SLOTS)) {
+  slots.slice(0, DECK_SLOTS).forEach((name) => {
     const s = name && SKILL_BY_NAME[name]?.style;
     if (s) count[s] = (count[s] ?? 0) + 1;
-  }
-  const hit = Object.entries(count).find(([, n]) => n >= 3);
-  return hit ? hit[0] : null;
+  });
+  return Object.entries(count)
+    .filter(([, n]) => n >= ULTIMATE_MIN)
+    .sort((a, b) => b[1] - a[1])
+    .map(([s]) => s);
+}
+
+/** 고른 궁극기가 조건에 맞으면 그것, 아니면 가장 많은 스타일의 궁극기 (없으면 null) */
+export function resolveUltimate(slots: (string | null)[], chosen: string | null): string | null {
+  const eligible = eligibleUltimates(slots);
+  return chosen && eligible.includes(chosen) ? chosen : eligible[0] ?? null;
 }
 
 /** 덱에 들어간 스타일별 개수 */

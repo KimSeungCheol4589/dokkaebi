@@ -1,4 +1,4 @@
-import { BASE_SLOTS, SKILL_BY_NAME, STYLE_BY_NAME, ultimateStyle } from '../data/skills';
+import { DECK_SLOTS, SKILL_BY_NAME, STYLE_BY_NAME, resolveUltimate } from '../data/skills';
 
 /** 도술 한 칸: 스타일 색 띠 + 이름 */
 export function SkillChip({ name, small }: { name: string | null; small?: boolean }) {
@@ -13,16 +13,15 @@ export function SkillChip({ name, small }: { name: string | null; small?: boolea
   );
 }
 
-/** 덱 칸 전체 (기본 5칸 + 추가 칸) 와 궁극기 표시 */
-export function DeckSlots({ slots, extra, small }: { slots: (string | null)[]; extra: number; small?: boolean }) {
-  const total = BASE_SLOTS + extra;
-  const filled = Array.from({ length: total }, (_, i) => slots[i] ?? null);
-  const ult = ultimateStyle(filled);
+/** 덱 9칸: 도술 8칸 + 궁극기 1칸 */
+export function DeckSlots({ slots, ultimate, small }: { slots: (string | null)[]; ultimate: string | null; small?: boolean }) {
+  const filled = Array.from({ length: DECK_SLOTS }, (_, i) => slots[i] ?? null);
+  const ult = resolveUltimate(filled, ultimate);
   return (
     <div className="deck-slots">
       {filled.map((name, i) => (
-        <div key={i} className={i >= BASE_SLOTS ? 'deck-slot extra' : 'deck-slot'}>
-          <span className="slot-no">{i < BASE_SLOTS ? i + 1 : `F${i - BASE_SLOTS + 1}`}</span>
+        <div key={i} className="deck-slot">
+          <span className="slot-no">{i + 1}</span>
           <SkillChip name={name} small={small} />
         </div>
       ))}

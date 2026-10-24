@@ -85,9 +85,10 @@ export interface Deck {
   author_nickname: string | null;
   title: string;
   purpose: string;
-  extra_slots: number;
-  /** 칸 순서대로 도술 이름, 빈 칸은 null */
+  /** 8칸 순서대로 도술 이름, 빈 칸은 null */
   slots: (string | null)[];
+  /** 궁극기 칸에 고른 스타일 (같은 스타일 3개 이상일 때) */
+  ultimate_style: string | null;
   description: string;
   video_url: string;
   guild_pick: boolean;
@@ -97,7 +98,7 @@ export interface Deck {
   updated_at: string;
 }
 
-export type DeckDraft = Pick<Deck, 'title' | 'purpose' | 'extra_slots' | 'slots' | 'description' | 'video_url'> & { id?: string };
+export type DeckDraft = Pick<Deck, 'title' | 'purpose' | 'slots' | 'ultimate_style' | 'description' | 'video_url'> & { id?: string };
 
 export interface GuestbookEntry {
   id: string;
