@@ -7,6 +7,8 @@ import {
   powerScore,
   type ActivityKey,
   type Backend,
+  type Deck,
+  type GuestbookEntry,
   type Guild,
   type Item,
   type ItemRequest,
@@ -40,6 +42,8 @@ interface RawRequest {
   decided_at: string | null;
 }
 
+type RawDeck = Omit<Deck, 'author_nickname' | 'like_count' | 'liked_by_me'>;
+
 interface DemoState {
   guild: Guild;
   profiles: Profile[];
@@ -47,11 +51,15 @@ interface DemoState {
   ledger: LedgerEntry[];
   items: Item[];
   requests: RawRequest[];
+  decks: RawDeck[];
+  deckLikes: { deck_id: string; member_id: string }[];
+  guestbook: GuestbookEntry[];
+  visits: { day: string; visitor: string }[];
   session: Session | null;
 }
 
 // 데이터 구조가 바뀌면 버전을 올려 예전 체험 데이터를 새로 시작합니다.
-const STORAGE_KEY = 'dokkaebi-guild-demo-v5';
+const STORAGE_KEY = 'dokkaebi-guild-demo-v6';
 const DAY = 86_400_000;
 
 export const DEMO_ACCOUNTS = [
@@ -177,6 +185,8 @@ function seed(): DemoState {
     },
   ];
 
+  const { decks, deckLikes, guestbook } = seedDecks();
+
   return {
     guild: {
       name: '우리 문파',
@@ -193,8 +203,44 @@ function seed(): DemoState {
     ledger,
     items,
     requests,
+    decks,
+    deckLikes,
+    guestbook,
+    visits: [],
     session: null,
   };
+}
+
+function seedDecks() {
+  const deck = (
+    id: string, author_id: string, title: string, purpose: string, slots: (string | null)[], extra_slots: number,
+    description: string, guild_pick: boolean, days: number,
+  ): RawDeck => ({
+    id, author_id, title, purpose, slots, extra_slots, description, video_url: '', guild_pick,
+    created_at: ago(days), updated_at: ago(days),
+  });
+  const decks: RawDeck[] = [
+    deck('d1', 'master', '강타 보스 단일딜', '보스', ['대검 강타', '검기 폭발', '검기 날리기', '연속 충격', '일점 저격', '크게 베기'], 1,
+      '강타 3개로 궁극기를 열고 일점 저격으로 마무리. 요신 토벌령 보스에 문파 기준 덱입니다.\n추가 칸이 있으면 크게 베기를 넣으세요.', true, 6),
+    deck('d2', 'officer', '파멸 광역 사냥', '사냥', ['하늘의 심판', '번개 폭풍', '화염구', '연쇄 번개', '얼음화살'], 0,
+      '파멸 궁극기 + 연쇄 번개로 몰이 사냥. 황무지 이후 사냥터에서 무난합니다.', true, 4),
+    deck('d3', 'member', '저격 결계지 방어용', '범용', ['일점 저격', '꿰뚫는 저격', '폭발하는 화살', '쐐기 화살', '생명의 흐름'], 0,
+      '결계지 방어에서 멀리서 웨이브 정리하기 좋아요. 헌신 하나로 생존 보강.', false, 3),
+    deck('d4', 'm6', '절명 대인전', '대인', ['기습', '약점 베기', '환영 참격', '은신', '얼음 감옥', '간파의 눈', '불굴'], 2,
+      '신기 쟁탈전용. 은신 → 기습으로 진입, 얼음 감옥으로 묶고 마무리합니다.', false, 1),
+  ];
+  const deckLikes = [
+    ...['officer', 'm3', 'member', 'm5', 'm6', 'm8'].map((m) => ({ deck_id: 'd1', member_id: m })),
+    ...['master', 'member', 'm7', 'm9'].map((m) => ({ deck_id: 'd2', member_id: m })),
+    ...['m5', 'm10'].map((m) => ({ deck_id: 'd3', member_id: m })),
+    ...['officer', 'm3', 'm8'].map((m) => ({ deck_id: 'd4', member_id: m })),
+  ];
+  const guestbook: GuestbookEntry[] = [
+    { id: 'g1', author_id: null, name: '지나가던 무사', message: '문파 분위기 좋아 보이네요! 가입 신청하고 갑니다 🙇', created_at: ago(2.2) },
+    { id: 'g2', author_id: 'm5', name: '감자전', message: '이번 주 신기 쟁탈전 수고 많으셨습니다~ 다음 주도 화이팅!', created_at: ago(1.1) },
+    { id: 'g3', author_id: null, name: '옆 문파 사람', message: '도술덱 정리 잘 되어 있어서 참고하고 갑니다. 강타 덱 좋네요.', created_at: ago(0.2) },
+  ];
+  return { decks, deckLikes, guestbook };
 }
 
 function load(): DemoState {
@@ -341,7 +387,12 @@ export function createDemoBackend(): Backend {
       const p = state.profiles.find((x) => x.id === id);
       if (!p) throw new Error('없는 문파원입니다');
       if (!isOfficer()) throw new Error('운영진만 할 수 있습니다');
-      if (p.role === 'master' && p.id !== me()!.id && !isMaster()) throw new Error('문주 정보는 문주만 바꿀 수 있습니다');
+      // 운영진은 문주의 전투력은 갱신할 수 있지만, 직책·승인은 바꿀 수 없음 (schema.sql 의 guard_profile 과 같음)
+      const touchesMasterInfo =
+        (patch.role !== undefined && patch.role !== p.role) || (patch.approved !== undefined && patch.approved !== p.approved);
+      if (p.role === 'master' && p.id !== me()!.id && !isMaster() && touchesMasterInfo) {
+        throw new Error('문주 정보는 문주만 바꿀 수 있습니다');
+      }
       if (patch.role !== undefined && patch.role !== p.role && !isMaster()) throw new Error('직책 변경은 문주만 할 수 있습니다');
       const losesMaster =
         p.role === 'master' && ((patch.role && patch.role !== 'master') || patch.approved === false);
@@ -462,8 +513,112 @@ export function createDemoBackend(): Backend {
       r.decided_at = new Date().toISOString();
       save();
     },
+
+    async listDecks() {
+      await tick();
+      return state.decks.map(deckView).sort((a, b) => b.created_at.localeCompare(a.created_at));
+    },
+    async getDeck(id) {
+      await tick();
+      const d = state.decks.find((x) => x.id === id);
+      return d ? deckView(d) : null;
+    },
+    async saveDeck({ id, ...fields }) {
+      await tick();
+      if (!isMember()) throw new Error('승인된 문파원만 덱을 올릴 수 있습니다');
+      if (!fields.title.trim()) throw new Error('덱 이름을 적어 주세요');
+      const now = new Date().toISOString();
+      if (id) {
+        const d = state.decks.find((x) => x.id === id);
+        if (!d) throw new Error('없는 덱입니다');
+        if (d.author_id !== me()!.id && !isOfficer()) throw new Error('내가 올린 덱만 고칠 수 있습니다');
+        Object.assign(d, fields, { updated_at: now });
+        save();
+        return id;
+      }
+      const newId = uid();
+      state.decks.push({ ...fields, id: newId, author_id: me()!.id, guild_pick: false, created_at: now, updated_at: now });
+      save();
+      return newId;
+    },
+    async deleteDeck(id) {
+      await tick();
+      const d = state.decks.find((x) => x.id === id);
+      if (!d) return;
+      if (d.author_id !== me()?.id && !isOfficer()) throw new Error('내가 올린 덱만 지울 수 있습니다');
+      state.decks = state.decks.filter((x) => x.id !== id);
+      state.deckLikes = state.deckLikes.filter((l) => l.deck_id !== id);
+      save();
+    },
+    async setDeckLike(id, liked) {
+      await tick();
+      if (!isMember()) throw new Error('문파원만 추천할 수 있습니다');
+      const mine = me()!.id;
+      state.deckLikes = state.deckLikes.filter((l) => !(l.deck_id === id && l.member_id === mine));
+      if (liked) state.deckLikes.push({ deck_id: id, member_id: mine });
+      save();
+    },
+    async setGuildPick(id, pick) {
+      await tick();
+      if (!isOfficer()) throw new Error('문파 추천은 운영진만 지정할 수 있습니다');
+      const d = state.decks.find((x) => x.id === id);
+      if (d) d.guild_pick = pick;
+      save();
+    },
+
+    async listGuestbook() {
+      await tick();
+      return [...state.guestbook].sort((a, b) => b.created_at.localeCompare(a.created_at));
+    },
+    async addGuestbook(name, message) {
+      await tick();
+      const n = name.trim();
+      const m = message.trim();
+      if (!n || n.length > 20) throw new Error('이름은 1~20자로 적어 주세요');
+      if (!m || m.length > 500) throw new Error('내용은 1~500자로 적어 주세요');
+      const recent = state.guestbook.some((g) => g.name === n && Date.now() - Date.parse(g.created_at) < 30_000);
+      if (recent) throw new Error('잠시 후 다시 남겨 주세요');
+      state.guestbook.push({ id: uid(), author_id: me()?.id ?? null, name: n, message: m, created_at: new Date().toISOString() });
+      save();
+    },
+    async deleteGuestbook(id) {
+      await tick();
+      const g = state.guestbook.find((x) => x.id === id);
+      if (!g) return;
+      if (g.author_id !== me()?.id && !isOfficer()) throw new Error('내가 쓴 글만 지울 수 있습니다');
+      state.guestbook = state.guestbook.filter((x) => x.id !== id);
+      save();
+    },
+
+    async recordVisit(visitorId) {
+      const day = today();
+      if (!state.visits.some((v) => v.day === day && v.visitor === visitorId)) {
+        state.visits.push({ day, visitor: visitorId });
+        save();
+      }
+    },
+    async getVisitStats() {
+      // 체험 모드: 예시 누적값 + 이 브라우저에서 센 방문
+      const day = today();
+      return {
+        today: DEMO_VISITS.today + state.visits.filter((v) => v.day === day).length,
+        total: DEMO_VISITS.total + state.visits.length,
+      };
+    },
   };
+
+  function deckView(d: RawDeck): Deck {
+    const likes = state.deckLikes.filter((l) => l.deck_id === d.id);
+    return {
+      ...d,
+      author_nickname: state.profiles.find((p) => p.id === d.author_id)?.nickname ?? null,
+      like_count: likes.length,
+      liked_by_me: likes.some((l) => l.member_id === state.session?.userId),
+    };
+  }
 }
+
+const DEMO_VISITS = { today: 23, total: 1_482 };
 
 export function resetDemo() {
   try {

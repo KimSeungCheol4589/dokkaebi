@@ -99,7 +99,9 @@ export function Home() {
         <section className="features">
           <Feature icon="👹" title="문파원 & 전투력" text="닉네임, 직책, 전투력과 최근 7일 성장을 한눈에 봅니다." to="/members" />
           <Feature icon="🏮" title="기여 점수" text="전투력 구간 점수에 요신 토벌령·결계지 방어·미혹의 정원·신기 쟁탈전 참여 점수가 더해집니다." to="/me" />
+          <Feature icon="📜" title="도술덱" text="문파원이 쓰는 도술 조합을 올리고 추천합니다. 운영진이 고른 문파 추천 덱도 있어요." to="/decks" />
           <Feature icon="📦" title="문파창고" text="모은 기여 점수로 창고 아이템을 신청하고, 운영진이 지급합니다." to="/warehouse" />
+          <Feature icon="✍️" title="방명록" text="문파원도, 지나가는 손님도 한마디 남길 수 있습니다." to="/guestbook" />
         </section>
       </div>
     </>

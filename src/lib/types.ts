@@ -79,6 +79,39 @@ export interface Session {
   email: string;
 }
 
+export interface Deck {
+  id: string;
+  author_id: string;
+  author_nickname: string | null;
+  title: string;
+  purpose: string;
+  extra_slots: number;
+  /** 칸 순서대로 도술 이름, 빈 칸은 null */
+  slots: (string | null)[];
+  description: string;
+  video_url: string;
+  guild_pick: boolean;
+  like_count: number;
+  liked_by_me: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type DeckDraft = Pick<Deck, 'title' | 'purpose' | 'extra_slots' | 'slots' | 'description' | 'video_url'> & { id?: string };
+
+export interface GuestbookEntry {
+  id: string;
+  author_id: string | null;
+  name: string;
+  message: string;
+  created_at: string;
+}
+
+export interface VisitStats {
+  today: number;
+  total: number;
+}
+
 export interface Backend {
   mode: 'demo' | 'supabase';
 
@@ -110,6 +143,21 @@ export interface Backend {
   requestItem(itemId: string, quantity: number, note: string): Promise<void>;
   decideRequest(id: string, approve: boolean): Promise<void>;
   cancelRequest(id: string): Promise<void>;
+
+  listDecks(): Promise<Deck[]>;
+  getDeck(id: string): Promise<Deck | null>;
+  /** 새 덱이면 만들고 id 를 돌려줌 */
+  saveDeck(draft: DeckDraft): Promise<string>;
+  deleteDeck(id: string): Promise<void>;
+  setDeckLike(id: string, liked: boolean): Promise<void>;
+  setGuildPick(id: string, pick: boolean): Promise<void>;
+
+  listGuestbook(): Promise<GuestbookEntry[]>;
+  addGuestbook(name: string, message: string): Promise<void>;
+  deleteGuestbook(id: string): Promise<void>;
+
+  recordVisit(visitorId: string): Promise<void>;
+  getVisitStats(): Promise<VisitStats>;
 }
 
 export const ROLE_LABEL: Record<Role, string> = {

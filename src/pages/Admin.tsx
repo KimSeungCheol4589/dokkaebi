@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { ITEM_IMAGES, ITEM_IMAGE_LABEL, ItemIcon } from '../components/ItemIcon';
 import { MemberGate, RoleBadge } from '../components/Layout';
+import { PowerImport } from '../components/PowerImport';
 import { api, fmt, fmtDate } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useAction, useLoad } from '../lib/hooks';
 import { today, weekLabel, weekStart } from '../lib/week';
 import { ACTIVITIES, KIND_LABEL, ROLE_LABEL, STATUS_LABEL, type ActivityKey, type Guild, type ItemDraft, type PowerTier, type Role } from '../lib/types';
 
-const TABS = ['신청 처리', '참여 기록', '문파원 관리', '창고 관리', '문파 정보'] as const;
+const TABS = ['신청 처리', '참여 기록', '문파원 관리', '전투력 갱신', '창고 관리', '문파 정보'] as const;
 type Tab = (typeof TABS)[number];
 
 export function Admin() {
@@ -28,6 +29,7 @@ export function Admin() {
         {tab === '신청 처리' && <RequestsTab />}
         {tab === '참여 기록' && <ActivityTab />}
         {tab === '문파원 관리' && <MembersTab />}
+        {tab === '전투력 갱신' && <PowerImport />}
         {tab === '창고 관리' && <ItemsTab />}
         {tab === '문파 정보' && <GuildTab />}
       </div>

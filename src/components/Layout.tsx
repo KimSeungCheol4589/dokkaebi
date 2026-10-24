@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { resetDemo } from '../lib/demoBackend';
 import { useLoad } from '../lib/hooks';
+import { recordVisit } from '../lib/visits';
 import { ROLE_LABEL } from '../lib/types';
 import mark from '../assets/mark.webp';
 
@@ -11,6 +12,8 @@ export function Layout() {
   const { session, me, isOfficer } = useAuth();
   const navigate = useNavigate();
   const guild = useLoad(() => api.getGuild());
+  // 방문을 먼저 기록한 뒤 숫자를 불러와야 오늘 방문에 내가 포함됨
+  const visits = useLoad(() => recordVisit().then(() => api.getVisitStats()));
 
   return (
     <div className="app">
@@ -32,7 +35,9 @@ export function Layout() {
             문파 소개
           </NavLink>
           <NavLink to="/members">문파원</NavLink>
+          <NavLink to="/decks">도술덱</NavLink>
           <NavLink to="/warehouse">문파창고</NavLink>
+          <NavLink to="/guestbook">방명록</NavLink>
           {session && <NavLink to="/me">내 정보</NavLink>}
           {isOfficer && <NavLink to="/admin">관리</NavLink>}
         </nav>
@@ -66,6 +71,11 @@ export function Layout() {
         <Outlet />
       </main>
       <footer className="footer">
+        {visits.data && (
+          <p className="footer-visits">
+            오늘 방문 {visits.data.today.toLocaleString('ko-KR')} · 전체 방문 {visits.data.total.toLocaleString('ko-KR')}
+          </p>
+        )}
         <p>
           {guild.data?.name ?? '문파'} 팬 홈페이지 · 도깨비의세계 공식 사이트가 아니며, 게임 관련 상표와 권리는 각 권리자에게 있습니다.
         </p>

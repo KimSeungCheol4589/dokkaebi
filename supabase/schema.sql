@@ -196,7 +196,11 @@ begin
   if auth.uid() is null then
     return new;
   end if;
-  if old.role = 'master' and old.id <> auth.uid() and not is_master() then
+  -- 운영진은 문주의 전투력은 갱신할 수 있지만, 닉네임·직책·승인은 바꿀 수 없음
+  if old.role = 'master' and old.id <> auth.uid() and not is_master()
+     and (new.nickname is distinct from old.nickname
+          or new.role is distinct from old.role
+          or new.approved is distinct from old.approved) then
     raise exception '문주 정보는 문주만 바꿀 수 있습니다';
   end if;
   if new.role is distinct from old.role and not is_master() then
@@ -405,3 +409,143 @@ end $$;
 revoke execute on function public.request_item(uuid, int, text) from anon;
 revoke execute on function public.decide_request(uuid, boolean) from anon;
 revoke execute on function public.cancel_request(uuid) from anon;
+
+-- =====================================================================
+-- 도술덱 · 방명록 · 방문자 수
+-- =====================================================================
+
+-- 도술덱: 문파원 누구나 올리고, 운영진이 '문파 추천'으로 표시
+create table public.decks (
+  id           uuid primary key default gen_random_uuid(),
+  author_id    uuid not null default auth.uid() references public.profiles on delete cascade,
+  title        text not null check (char_length(title) between 1 and 40),
+  purpose      text not null default '사냥' check (purpose in ('사냥', '보스', '대인', '범용')),
+  extra_slots  int  not null default 0 check (extra_slots between 0 and 3),
+  -- 칸 순서대로 도술 이름 (빈 칸은 null), 최대 8칸
+  slots        jsonb not null default '[]'
+               check (jsonb_typeof(slots) = 'array' and jsonb_array_length(slots) <= 8),
+  description  text not null default '' check (char_length(description) <= 2000),
+  video_url    text not null default '' check (video_url = '' or video_url ~ '^https?://'),
+  guild_pick   boolean not null default false,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create index decks_created_idx on public.decks (created_at desc);
+
+-- 문파원의 '추천' (한 사람이 덱마다 한 번)
+create table public.deck_likes (
+  deck_id     uuid not null references public.decks on delete cascade,
+  member_id   uuid not null default auth.uid() references public.profiles on delete cascade,
+  created_at  timestamptz not null default now(),
+  primary key (deck_id, member_id)
+);
+
+-- '문파 추천' 표시는 운영진만, 작성자는 바꿀 수 없음
+create or replace function public.guard_deck() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is not null and not is_officer() then
+    if tg_op = 'INSERT' and new.guild_pick then
+      raise exception '문파 추천은 운영진만 지정할 수 있습니다';
+    end if;
+    if tg_op = 'UPDATE' and new.guild_pick is distinct from old.guild_pick then
+      raise exception '문파 추천은 운영진만 지정할 수 있습니다';
+    end if;
+  end if;
+  if tg_op = 'UPDATE' then
+    new.author_id := old.author_id;
+    new.created_at := old.created_at;
+    -- 추천 표시만 바꾼 경우에는 수정 시각을 그대로 둠
+    if (new.title, new.purpose, new.extra_slots, new.slots, new.description, new.video_url)
+       is distinct from (old.title, old.purpose, old.extra_slots, old.slots, old.description, old.video_url) then
+      new.updated_at := now();
+    end if;
+  end if;
+  return new;
+end $$;
+
+create trigger decks_guard
+  before insert or update on public.decks
+  for each row execute function public.guard_deck();
+
+create view public.deck_overview with (security_invoker = on) as
+select
+  d.*,
+  p.nickname as author_nickname,
+  (select count(*) from deck_likes l where l.deck_id = d.id)::int as like_count,
+  exists (select 1 from deck_likes l where l.deck_id = d.id and l.member_id = auth.uid()) as liked_by_me
+from decks d
+left join profiles p on p.id = d.author_id;
+
+grant select on public.deck_overview to anon, authenticated;
+
+alter table public.decks      enable row level security;
+alter table public.deck_likes enable row level security;
+
+create policy decks_read   on public.decks for select to anon, authenticated using (true);
+create policy decks_insert on public.decks for insert to authenticated
+  with check (is_member() and author_id = auth.uid());
+create policy decks_update on public.decks for update to authenticated
+  using (author_id = auth.uid() or is_officer()) with check (author_id = auth.uid() or is_officer());
+create policy decks_delete on public.decks for delete to authenticated
+  using (author_id = auth.uid() or is_officer());
+
+create policy likes_read   on public.deck_likes for select to anon, authenticated using (true);
+create policy likes_insert on public.deck_likes for insert to authenticated
+  with check (is_member() and member_id = auth.uid());
+create policy likes_delete on public.deck_likes for delete to authenticated
+  using (member_id = auth.uid());
+
+-- 방명록: 로그인하지 않은 방문자도 이름을 적어 남길 수 있음
+create table public.guestbook (
+  id          uuid primary key default gen_random_uuid(),
+  author_id   uuid default auth.uid() references public.profiles on delete set null,
+  name        text not null check (char_length(trim(name)) between 1 and 20),
+  message     text not null check (char_length(trim(message)) between 1 and 500),
+  created_at  timestamptz not null default now()
+);
+create index guestbook_created_idx on public.guestbook (created_at desc);
+
+-- 도배 방지: 같은 이름으로 30초 안에 다시 쓰지 못함
+create or replace function public.guard_guestbook() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if exists (select 1 from guestbook
+              where name = new.name and created_at > now() - interval '30 seconds') then
+    raise exception '잠시 후 다시 남겨 주세요';
+  end if;
+  return new;
+end $$;
+
+create trigger guestbook_guard
+  before insert on public.guestbook
+  for each row execute function public.guard_guestbook();
+
+alter table public.guestbook enable row level security;
+create policy guestbook_read   on public.guestbook for select to anon, authenticated using (true);
+create policy guestbook_insert on public.guestbook for insert to anon, authenticated
+  with check (author_id is null or author_id = auth.uid());
+create policy guestbook_delete on public.guestbook for delete to authenticated
+  using (author_id = auth.uid() or is_officer());
+
+-- 방문자 수: 브라우저마다 만든 임의의 id 로 하루 한 번만 셉니다 (개인정보는 저장하지 않음)
+create table public.site_visits (
+  day      date not null default (now() at time zone 'Asia/Seoul')::date,
+  visitor  uuid not null,
+  primary key (day, visitor)
+);
+alter table public.site_visits enable row level security;  -- 정책 없음: 아래 함수로만 접근
+
+create or replace function public.record_visit(p_visitor uuid) returns void
+language sql security definer set search_path = public as $$
+  insert into site_visits (visitor) values (p_visitor) on conflict do nothing;
+$$;
+
+create or replace function public.visit_stats() returns table (today bigint, total bigint)
+language sql stable security definer set search_path = public as $$
+  select count(*) filter (where day = (now() at time zone 'Asia/Seoul')::date), count(*)
+    from site_visits;
+$$;
+
+grant execute on function public.record_visit(uuid) to anon, authenticated;
+grant execute on function public.visit_stats() to anon, authenticated;

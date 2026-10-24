@@ -1,5 +1,5 @@
 import { createClient, type Session as SbSession } from '@supabase/supabase-js';
-import type { Backend, Item, ItemRequest, LedgerEntry, Member, Session } from './types';
+import type { Backend, Deck, GuestbookEntry, Item, ItemRequest, LedgerEntry, Member, Session } from './types';
 
 const ERROR_HINTS: [RegExp, string][] = [
   [/Invalid login credentials/i, '이메일 또는 비밀번호가 맞지 않습니다'],
@@ -151,6 +151,65 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     async cancelRequest(id) {
       const { error } = await sb.rpc('cancel_request', { p_id: id });
       fail(error);
+    },
+
+    async listDecks() {
+      const { data, error } = await sb.from('deck_overview').select('*').order('created_at', { ascending: false }).limit(300);
+      fail(error);
+      return (data ?? []) as Deck[];
+    },
+    async getDeck(id) {
+      const { data, error } = await sb.from('deck_overview').select('*').eq('id', id).maybeSingle();
+      fail(error);
+      return data as Deck | null;
+    },
+    async saveDeck({ id, ...fields }) {
+      if (id) {
+        const { error } = await sb.from('decks').update(fields).eq('id', id);
+        fail(error);
+        return id;
+      }
+      const { data, error } = await sb.from('decks').insert(fields).select('id').single();
+      fail(error);
+      return data!.id as string;
+    },
+    async deleteDeck(id) {
+      const { error } = await sb.from('decks').delete().eq('id', id);
+      fail(error);
+    },
+    async setDeckLike(id, liked) {
+      const { error } = liked
+        ? await sb.from('deck_likes').upsert({ deck_id: id }, { onConflict: 'deck_id,member_id', ignoreDuplicates: true })
+        : await sb.from('deck_likes').delete().eq('deck_id', id).eq('member_id', await uid());
+      fail(error);
+    },
+    async setGuildPick(id, pick) {
+      const { error } = await sb.from('decks').update({ guild_pick: pick }).eq('id', id);
+      fail(error);
+    },
+
+    async listGuestbook() {
+      const { data, error } = await sb.from('guestbook').select('*').order('created_at', { ascending: false }).limit(200);
+      fail(error);
+      return (data ?? []) as GuestbookEntry[];
+    },
+    async addGuestbook(name, message) {
+      const { error } = await sb.from('guestbook').insert({ name: name.trim(), message: message.trim() });
+      fail(error);
+    },
+    async deleteGuestbook(id) {
+      const { error } = await sb.from('guestbook').delete().eq('id', id);
+      fail(error);
+    },
+
+    async recordVisit(visitorId) {
+      await sb.rpc('record_visit', { p_visitor: visitorId });
+    },
+    async getVisitStats() {
+      const { data, error } = await sb.rpc('visit_stats');
+      fail(error);
+      const row = (Array.isArray(data) ? data[0] : data) ?? { today: 0, total: 0 };
+      return { today: Number(row.today), total: Number(row.total) };
     },
   };
 }

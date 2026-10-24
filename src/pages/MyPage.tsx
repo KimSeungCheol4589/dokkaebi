@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { RoleBadge } from '../components/Layout';
+import { PowerFromScreenshot } from '../components/PowerFromScreenshot';
 import { api, fmt, fmtDate } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useAction, useLoad } from '../lib/hooks';
@@ -89,6 +90,7 @@ export function MyPage() {
               <span>현재 전투력</span>
               <input className="input" inputMode="numeric" required value={power} onChange={(e) => setPower(e.target.value.replace(/[^\d,]/g, ''))} />
             </label>
+            <PowerFromScreenshot onPick={(n) => setPower(String(n))} />
             <button className="btn btn-red" disabled={busy}>
               저장
             </button>
