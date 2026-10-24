@@ -550,3 +550,12 @@ $$;
 
 grant execute on function public.record_visit(uuid) to anon, authenticated;
 grant execute on function public.visit_stats() to anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- 웹사이트(anon·authenticated)가 표에 접근할 수 있게 허용
+--   실제로 누가 무엇을 보고 바꿀 수 있는지는 위의 RLS 정책과 함수가 정합니다.
+--   (Supabase 프로젝트 설정에 따라 기본 권한이 없을 수 있어 명시합니다)
+-- ---------------------------------------------------------------------
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to anon, authenticated;
+grant usage, select on all sequences in schema public to anon, authenticated;
